@@ -1,19 +1,41 @@
 # import robot_modules.auth  as auth
 import auth
-from data_types import AnglePos, RobotData
+from data_types import AnglePos, RobotData, XYZPos
+from utils.vizualizer import Vizualization
+
 
 system = auth.Auth("localhost", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a")\
     .super_admin("SuperAdmin", "12345").system("localhost", 5000)
     
+robot = RobotData("First", "654123")
+    
 """ Other commands """
 # print(robot.xyz_to_angle("First", [[100, -100, 67.117],[200, 0, 67.117],[100, 100, 67.117]], "654123"))
 # robot.set_program("First", "print('Test 1234')", "654123")
-    
-""" PTP test """
-pos = AnglePos().from_list([300,40,0,150])
-robot = RobotData("First", "654123")
 
-print(system.ptp_lin(robot, pos))
+""" Data vizualization test """
+pos = AnglePos().from_list([300,40,0,150])
+print(system.ptp(robot, pos))
+p0 = XYZPos().from_list([201,150,100])
+p1 = XYZPos().from_list([200,-50,100])
+p2 = XYZPos().from_list([-200,310,100])
+p3 = XYZPos().from_list([400,50,100])
+p1.smooth_endPoint = p2
+p1.smooth_distance = 200
+p2.smooth_endPoint = p3
+p2.smooth_distance = 200
+p4 = XYZPos().from_list([43,9,-20])
+
+lin1 = system.lin(robot, p1, start=p0)
+# Current pos is p3
+lin4 = system.lin(robot, p4, start=lin1.trjectory[-1])
+
+trajectory= []+lin1.trjectory+lin4.trjectory
+Vizualization(trajectory=trajectory).show_trajectory_plot()
+
+""" PTP test """
+# pos = AnglePos().from_list([300,40,0,150])
+# print(system.lin(robot, pos))
 # robot.ptp_lin("First", [100,140,-40,10], "654123")
 # robot.ptp("First", [200,120,-90,120], "654123")
 # robot.ptp([10,0,0,-10])

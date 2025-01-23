@@ -3,7 +3,6 @@
 The tokenizer class is used to automatically send a token to the system class after registration.
 
 """
-import json
 
 import requests
 
@@ -38,7 +37,7 @@ class system(__robot.Robot, __tools.Tools):
             "State": str(state),
             "Code" : robot_data.code
             }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
         
 

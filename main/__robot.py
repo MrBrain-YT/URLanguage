@@ -5,7 +5,8 @@ import requests
 import numpy as np
 from scipy.interpolate import CubicSpline
 
-from data_types import RobotData, AnglePos, XYZPos
+from data_types import RobotData, AnglePos, XYZPos, ReturnData
+import smoothing
 
 class Robot():
     
@@ -53,7 +54,7 @@ class Robot():
         else:
             return False
 
-    def ptp(self, robot_data:RobotData, angles:AnglePos) -> str:
+    def set_robot_position(self, robot_data:RobotData, angles:AnglePos) -> str:
         angles_dict = angles.export_to(export_type=dict).get("data")
         # Set position
         url = f"https://{self.__host}:{str(self.__port)}/CurentPosition"
@@ -65,6 +66,10 @@ class Robot():
         for i in range(1, len(angles_dict)+1):
             data[f"J{i}"] = angles_dict[i-1]
         responce = requests.post(url, verify=True, data=data).text
+        return responce
+    
+    def set_robot_speed(self, robot_data:RobotData, angles_speed:AnglePos) -> str:
+        angles_speed_dict = angles_speed.export_to(export_type=dict).get("data")
         # Set motor speed
         url = f"https://{self.__host}:{str(self.__port)}/CurentSpeed"
         data = {
@@ -72,23 +77,23 @@ class Robot():
             "token": self.__token,
             "Code" : robot_data.code
             }
-        for i in range(1, len(angles_dict)+1):
-            data[f"J{i}"] = 1
-        requests.post(url, verify=True, data=data)
-
+        for i in range(1, len(angles_speed_dict)+1):
+            data[f"J{i}"] = angles_speed_dict[i-1]
+        responce = requests.post(url, verify=True, data=data).text
         return responce
         
     def move_xyz(self, robot_data:RobotData, position:XYZPos) -> str:
         url = f"https://{self.__host}:{str(self.__port)}/Move_XYZ"
         data = {
             "Robot": robot_data.name,
-            "X": position.x,
-            "Y": position.y,
-            "Z": position.z,
+            "x": position.x,
+            "y": position.y,
+            "z": position.z,
             "token": self.__token,
             "Code" : robot_data.code
             }
-        return requests.post(url, verify=True, data=data).text
+        response = requests.post(url, verify=True, data=data)
+        return ReturnData(responce=response.text, code=response.status_code, trjectory=position)
 
     def move_angle(self, robot_data:RobotData, angles:AnglePos) -> str:
         url = f"https://{self.__host}:{str(self.__port)}/angle_to_xyz"
@@ -105,14 +110,14 @@ class Robot():
     def xyz_to_angle(self, robot_data:RobotData, positions:list[XYZPos], is_multi_point:bool=False) -> list:
         new_positions = []
         for pos in positions:
-            new_positions.append(pos.export_to(export_type=list))
+            new_positions.append(pos.export_to(export_type=list)) 
             
         url = f"https://{self.__host}:{str(self.__port)}/XYZ_to_angle"
         data = {
             "Robot": robot_data.name,
             "token": self.__token,
             "Code" : robot_data.code,
-            "positions_data": str(positions)
+            "positions_data": str(new_positions)
             }
         result = requests.post(url, verify=True, data=data).text
         if not is_multi_point:
@@ -152,7 +157,7 @@ class Robot():
         
         return speeds
 
-    def ptp_lin(self, robot_data:RobotData, angles:AnglePos, step_count:int=100) -> None:
+    def ptp(self, robot_data:RobotData, angles:AnglePos, step_count:int=100) -> None:
         url = f"https://{self.__host}:{str(self.__port)}/GetCurentPosition"
         data = {
             "Robot": robot_data.name,
@@ -160,8 +165,12 @@ class Robot():
             "Code": robot_data.code
             }
         resp = requests.post(url, verify=True, data=data).text
-        speed_angles = json.loads(resp.replace("'", '"'))
-        start_angles = AnglePos().from_dict(speed_angles)
+        current_angles = json.loads(resp.replace("'", '"'))
+        start_angles:AnglePos
+        if isinstance(current_angles, list):
+            start_angles = AnglePos().from_dict(current_angles[-1])
+        else:
+            start_angles = AnglePos().from_dict(current_angles)
         end_angles = angles
         # Вычисление скоростей вращения для перемещения от начальной позиции к конечной
         speeds = self.calculate_speed(start_angles, end_angles, step_count)
@@ -219,16 +228,48 @@ class Robot():
         # Генерируем список точек
         points = []
         for i in range(num_points):
-            points.append([x1 + i * x_step, y1 + i * y_step, z1 + i * z_step])
+            points.append(XYZPos().from_list([x1 + i * x_step, y1 + i * y_step, z1 + i * z_step]))
         return points
     
-    def lin(self, robot_data:RobotData, start:XYZPos, end:XYZPos, num_points:int=50, lin_step_count:int=100, speed_multiplier:int=1):
-        points = self.generate_line_points(start, end, num_points)
-        arc_points = self.xyz_to_angle(robot_data, points, is_multi_point=True)
+    def lin(self, robot_data:RobotData, end_point:XYZPos, num_points:int=25, lin_step_count:int=25, speed_multiplier:int=1, start:XYZPos=None):
+        if start is None:
+            url = f"https://{self.__host}:{str(self.__port)}/GetXYZPosition"
+            data = {
+                "Robot": robot_data.name,
+                "token": self.__token
+                }
+            resp = requests.post(url, verify=True, data=data).text
+            responce_data = json.loads(resp.replace("'", '"'))
+            start = XYZPos().from_dict(responce_data)
+        
+        arc_points = []
+        if end_point.smooth_endPoint is None:
+            full_trajectory_points = self.generate_line_points(start, end_point, num_points)
+            arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
+        else:
+            cartesian_points = []
+            updating_end_point = end_point
+            while True:
+                if updating_end_point.smooth_endPoint is None:
+                    break
+                else:
+                    cartesian_points.append(updating_end_point)
+                    updating_end_point = updating_end_point.smooth_endPoint
+
+            updating_start_point = start
+            full_trajectory_points = [start]
+            for point in cartesian_points:
+                smoothed_arc_points = smoothing.get_smothed_arc_points(updating_start_point, point)
+                full_trajectory_points += smoothed_arc_points
+                
+                # TODO: Rebuild updating_start_point value
+                updating_start_point = smoothed_arc_points[-1]
+            arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
+            
         
         new_speeds:list = []
         for index, point in enumerate(arc_points):
-            old_point:list = []
+            old_point:AnglePos = None
             if index == 0:
                 url = f"https://{self.__host}:{str(self.__port)}/GetCurentPosition"
                 data = {
@@ -236,12 +277,13 @@ class Robot():
                     "token": self.__token
                     }
                 resp = requests.post(url, verify=True, data=data).text
-                speed_angles = json.loads(resp.replace("'", '"'))
-                angles_count = self.get_angles_count(robot_data)
-                old_point = []
-                for count in range(angles_count):
-                    old_point.append(speed_angles[f"J{count+1}"])
-                    
+                current_angles = json.loads(resp.replace("'", '"'))
+                
+                if isinstance(current_angles, list):
+                    old_point = AnglePos().from_dict(current_angles[-1])
+                else:
+                    old_point = AnglePos().from_dict(current_angles)
+
                 old_point = AnglePos().from_list(old_point)
                 
             else:
@@ -260,7 +302,7 @@ class Robot():
             "Code" : robot_data.code,
             "angles_data": str(arc_points)
             }
-        requests.post(url, verify=True ,data=data)
+        response_pos = requests.post(url, verify=True ,data=data)
         
         # send current speed
         url = f"https://{self.__host}:{str(self.__port)}/CurentSpeed"
@@ -270,8 +312,12 @@ class Robot():
             "Code" : robot_data.code,
             "angles_data": str(new_speeds)
             }
-        requests.post(url, verify=True, data=data)
-        return True
+        response_speed = requests.post(url, verify=True, data=data)
+        response_data = {"Set position": response_pos.text,
+                         "Set speed": response_speed.text}
+        response_codes = {"Set position": response_pos.status_code,
+                         "Set speed": response_speed.status_code}
+        return ReturnData(responce=response_data, code=response_codes, trjectory=full_trajectory_points)
         
     @staticmethod
     def __interpolate_points(start_point:XYZPos, intermediate_point:XYZPos, end_point:XYZPos, num_points:int):
@@ -300,8 +346,7 @@ class Robot():
                 points_xyz[1],
                 points_xyz[2],
                 count_points)
-            
-            
+
             new_positions = []
             for point in coords.tolist():
                 new_positions.append(XYZPos(point.x, point.y, point.z))
@@ -343,7 +388,7 @@ class Robot():
                 "Code" : robot_data.code,
                 "angles_data": str(points)
                 }
-            requests.post(url,  verify=True ,data=data)
+            response_pos = requests.post(url, verify=True, data=data)
             
             # send current speed
             url = f"https://{self.__host}:{str(self.__port)}/CurentSpeed"
@@ -353,8 +398,13 @@ class Robot():
                 "Code" : robot_data.code,
                 "angles_data": str(new_speeds)
                 }
-            requests.post(url, verify=True, data=data)
-            return True
+            response_speed = requests.post(url, verify=True, data=data)
+            
+            response_data = {"Set position": response_pos.text,
+                            "Set speed": response_speed.text}
+            response_codes = {"Set position": response_pos.status_code,
+                            "Set speed": response_speed.status_code}
+            return ReturnData(responce=response_data, code=response_codes, trjectory=arc_points)
         else:
             return "The robot is currently in emergency stop"
 

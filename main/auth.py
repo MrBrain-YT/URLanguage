@@ -7,8 +7,6 @@ the received token is transferred to the tokenizer class and the system class is
 
 """
 
-import json
-
 import requests
 
 import __user as User
@@ -29,7 +27,7 @@ class Auth():
                 "password": password, 
                 "server_token": self.server_token
                 }
-            resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+            resp = requests.post(url, verify=True, data=data).text
             if resp != "False":
                 return resp.split(",")[0], resp.split(",")[1] 
             else:

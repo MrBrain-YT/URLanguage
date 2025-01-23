@@ -1,17 +1,19 @@
 """ Classes for creating robots positions or robot data"""
 
 from typing import Union
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 class XYZPos:
     
-    def __init__(self, **kwargs):
+    def __init__(self, smooth_distance:float=5, smooth_endPoint:Union['XYZPos', None]=None, **kwargs):
         self.x = kwargs.get('x')
         self.y = kwargs.get('y')
         self.z = kwargs.get('z')
+        self.smooth_distance = smooth_distance
+        self.smooth_endPoint = smooth_endPoint
         
     def __str__(self):
-        print([self.x, self.y, self.z])
+        return f"XYZPos: {[self.x, self.y, self.z]}"
         
     @classmethod
     def from_dict(cls, data:dict):
@@ -62,7 +64,7 @@ class AnglePos:
         return self.export_to(list)[index]
                 
     def __str__(self):
-        print(self.angles)
+        return self.angles
         
     def from_dict(self, data:dict, rewrite:bool=False):
         if rewrite:
@@ -77,7 +79,7 @@ class AnglePos:
             if not isinstance(arg, (int, float)):
                 raise TypeError('All arguments must be numbers')
             else:
-                self.angles[f"J{index}"] = arg
+                self.angles[f"J{index + 1}"] = arg
         return self
                 
     def export_to(self, export_type:Union[list, dict]):
@@ -91,10 +93,20 @@ class AnglePos:
         else:
             raise ValueError('Export type must be a list or dictionary')
         
+        
+class Spline():
+    pass
+        
 @dataclass
 class RobotData:
     name: str
     code: str
     
     def __str__(self):
-        print(f"Robot '{self.name}' | code '{self.code}'")
+        return f"Robot '{self.name}' | code '{self.code}'"
+        
+@dataclass   
+class ReturnData():
+    responce: str
+    code: int
+    trjectory: list[XYZPos] = None

@@ -7,7 +7,6 @@ The tokenizer class is used to automatically send a token to the system class af
 """
 
 import shutil
-import json
 
 import requests
 
@@ -38,12 +37,11 @@ class system(__user.system):
         url = f"https://{self.__host}:{self.__port}/AddKinematics"
         shutil.make_archive(file_name, 'zip', path)
         file = {"file" : open(f"./{file_name}.zip", 'rb')}
-        print(file)
         data = {
             "Robot": robot_data.name,
             "token": self.token
             }
-        response = requests.post(url, files=file, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        response = requests.post(url, files=file, data=data).text
         return response
     
     def bind_kinematics(self, robot_data:RobotData, folder_name:str) -> str:
@@ -53,7 +51,7 @@ class system(__user.system):
             "Kinematics": folder_name,
             "token": self.token
             }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
 
     def add_tool(self, id:str) -> str:
@@ -62,7 +60,7 @@ class system(__user.system):
             "Id": id,
             "token": self.__token
         }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
     
     def add_robot(self, robot_data:RobotData, angle_count:int, kinematics:str="None") -> str:
@@ -75,7 +73,7 @@ class system(__user.system):
             "Code": robot_data.code,
             "token": self.__token
             }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         # Add account for so that the robot itself sends some system commands
         url = f"https://{self.__host}:{self.__port}/CreateAccount"
         data = {
@@ -84,7 +82,7 @@ class system(__user.system):
             "User_role": "robot",
             "token": self.__token
             }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
     
     def set_robot_home(self, robot_data:RobotData, angles:list) -> str:
@@ -96,7 +94,7 @@ class system(__user.system):
             }
         for i in range(1, len(angles)+1):
             data[f"J{i}"] = angles[i-1]
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
 
     def delete_tool(self, id) -> str:
@@ -105,7 +103,7 @@ class system(__user.system):
             "id": id,
             "token": self.__token
             }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
 
     def delete_robot(self, robot_data:RobotData) -> str:
@@ -114,7 +112,7 @@ class system(__user.system):
             "Robot": robot_data.name,
             "token": self.__token
             }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
 
     def add_user(self, name:str, password:str) -> None:
@@ -126,7 +124,7 @@ class system(__user.system):
                 "User_role": roles.Roles.user,
                 "token": self.__token
                 }
-            resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+            resp = requests.post(url, verify=True, data=data).text
             return resp
         else:
             raise TypeError("The word robot cannot be used in the password because it is reserved")
@@ -136,7 +134,7 @@ class system(__user.system):
         data = {
             "token": self.__token
             }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
 
     def get_robot(self, robot_data:RobotData) -> str:
@@ -145,7 +143,7 @@ class system(__user.system):
             "Robot": robot_data.name,
             "token": self.__token
             }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
     
     def add_log(self, robot_data:RobotData, type:str, text:str) -> bool:
@@ -156,5 +154,5 @@ class system(__user.system):
             "Text": text,
             "token": self.__token
             }
-        return bool(requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text)
+        return bool(requests.post(url, verify=True, data=data).text)
     

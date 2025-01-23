@@ -5,7 +5,6 @@ The tokenizer class is used to automatically send a token to the system class af
 """
 
 import ast
-import json
 
 import requests
 
@@ -36,7 +35,7 @@ class system(__admin.system):
             "name": name,
             "token": self.token
             }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
 
     def add_user(self, name:str, password:str, role:str) -> str:
@@ -48,7 +47,7 @@ class system(__admin.system):
                 "user_role": role,
                 "token": self.token
                 }
-            resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+            resp = requests.post(url, verify=True, data=data).text
             return resp
         else:
             raise TypeError("The word robot cannot be used in the password because it is reserved")
@@ -56,7 +55,7 @@ class system(__admin.system):
     def get_user_accounts(self) -> str:
         url = f"https://{self.host}:{self.port}/GetAccounts"
         data = {"token": self.token}
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
     
     def change_password(self, name:str, password:str) -> str:
@@ -66,7 +65,7 @@ class system(__admin.system):
             "password": password,
             "token": self.token
         }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
     
     # def get_robot_token(self, name:str) -> str:
@@ -76,7 +75,7 @@ class system(__admin.system):
     #         "password": "robot",
     #         "token": self.token
     #     }
-    #     resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+    #     resp = requests.post(url, verify=True, data=data).text
     #     return resp
     #     ↓↓↓↓↓↓
     
@@ -87,7 +86,7 @@ class system(__admin.system):
             "password": password,
             "token": self.token
         }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
     
     def change_token(self, name:str, password:str) -> str:
@@ -98,7 +97,7 @@ class system(__admin.system):
                 "password": password,
                 "token": self.token
             }
-            resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+            resp = requests.post(url, verify=True, data=data).text
             return resp
         else:
             raise TypeError("The word robot cannot be used in the password because it is reserved")
@@ -108,7 +107,7 @@ class system(__admin.system):
         data = {
             "token": self.__token
         }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         robots = ast.literal_eval(resp.split("\n")[0].replace("robots = ", ""))
         tools = ast.literal_eval(resp.split("\n")[1].replace("tools = ", ""))
         frames = ast.literal_eval(resp.split("\n")[2].replace("frames = ", ""))
@@ -122,5 +121,5 @@ class system(__admin.system):
             "tools": str(tools),
             "frames": str(frames)
         }
-        resp = requests.post(url, verify=True, data=json.loads(json.dumps(data, ensure_ascii=False))).text
+        resp = requests.post(url, verify=True, data=data).text
         return resp
