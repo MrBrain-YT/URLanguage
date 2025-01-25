@@ -24,16 +24,16 @@ class tokenizer():
 class system(__robot.Robot, __tools.Tools):
     
     def __init__(self, host:str, port:int, *token:str) -> None:
-        self.__token = token if external_token == "" else external_token
-        self.__port = port
-        self.__host = host
-        super().__init__(self.__host, self.__port, self.__token)
+        self._token = token if external_token == "" else external_token
+        self._port = port
+        self._host = host
+        super().__init__(self._host, self._port, self._token)
         
     def set_emergency(self, robot_data:RobotData, state:bool) -> str:
-        url = f"https://{self.__host}:{self.__port}/Emergency"
+        url = f"https://{self._host}:{self._port}/Emergency"
         data = {
             "Robot": robot_data.name,
-            "token": self.__token,
+            "token": self._token,
             "State": str(state),
             "Code" : robot_data.code
             }

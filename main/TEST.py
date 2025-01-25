@@ -1,6 +1,6 @@
 # import robot_modules.auth  as auth
 import auth
-from data_types import AnglePos, RobotData, XYZPos
+from data_types import AnglePos, RobotData, XYZPos, Spline
 from utils.vizualizer import Vizualization
 
 
@@ -14,7 +14,8 @@ robot = RobotData("First", "654123")
 # robot.set_program("First", "print('Test 1234')", "654123")
 
 """ Data vizualization test """
-pos = AnglePos().from_list([300,40,0,150])
+" Smooth angle vizualization "
+pos = AnglePos().from_list([200,40,0,150])
 print(system.ptp(robot, pos))
 p0 = XYZPos().from_list([201,150,100])
 p1 = XYZPos().from_list([200,-50,100])
@@ -32,6 +33,16 @@ lin4 = system.lin(robot, p4, start=lin1.trjectory[-1])
 
 trajectory= []+lin1.trjectory+lin4.trjectory
 Vizualization(trajectory=trajectory).show_trajectory_plot()
+" Spline vizualization "
+# spl = Spline(robot_data=robot, system=system, num_points=10)
+# p0 = XYZPos().from_list([201,150,100])
+# p1 = XYZPos().from_list([200,-50,100])
+# p2 = XYZPos().from_list([-200,310,100])
+# p3 = XYZPos().from_list([400,50,100])
+# spl.add_point(p0, p1, p2, p3)
+# trajectory = spl.start_move()
+# print(trajectory)
+# Vizualization(trajectory=trajectory.trjectory).show_trajectory_plot()
 
 """ PTP test """
 # pos = AnglePos().from_list([300,40,0,150])

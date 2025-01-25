@@ -26,15 +26,15 @@ class tokenizer():
 
 # United robotics system 
 class system(__user.system):
-
+    
     def __init__(self, host:str, port:int, *token:str) -> None:
-        self.__host = host
-        self.__port = port
-        self.__token = token if external_token == "" else external_token
-        super().__init__(self.__host, self.__port, self.__token)
+        self._host = host
+        self._port = port
+        self._token = token if external_token == "" else external_token
+        super().__init__(self._host, self._port, self._token)
 
     def add_kinematics(self, robot_data:RobotData, path:str, file_name:str) -> str:
-        url = f"https://{self.__host}:{self.__port}/AddKinematics"
+        url = f"https://{self._host}:{self._port}/AddKinematics"
         shutil.make_archive(file_name, 'zip', path)
         file = {"file" : open(f"./{file_name}.zip", 'rb')}
         data = {
@@ -45,7 +45,7 @@ class system(__user.system):
         return response
     
     def bind_kinematics(self, robot_data:RobotData, folder_name:str) -> str:
-        url = f"https://{self.__host}:{self.__port}/BindKinematics"
+        url = f"https://{self._host}:{self._port}/BindKinematics"
         data = {
             "Robot": robot_data.name,
             "Kinematics": folder_name,
@@ -55,41 +55,41 @@ class system(__user.system):
         return resp
 
     def add_tool(self, id:str) -> str:
-        url = f"https://{self.__host}:{self.__port}/URTC"
+        url = f"https://{self._host}:{self._port}/URTC"
         data = {
             "Id": id,
-            "token": self.__token
+            "token": self._token
         }
         resp = requests.post(url, verify=True, data=data).text
         return resp
     
     def add_robot(self, robot_data:RobotData, angle_count:int, kinematics:str="None") -> str:
         # Add robot
-        url = f"https://{self.__host}:{self.__port}/CreateRobot"
+        url = f"https://{self._host}:{self._port}/CreateRobot"
         data = {
             "Robot": robot_data.name,
             "Angle": angle_count,
             "Kinematics": kinematics,
             "Code": robot_data.code,
-            "token": self.__token
+            "token": self._token
             }
         resp = requests.post(url, verify=True, data=data).text
         # Add account for so that the robot itself sends some system commands
-        url = f"https://{self.__host}:{self.__port}/CreateAccount"
+        url = f"https://{self._host}:{self._port}/CreateAccount"
         data = {
             "name": robot_data.name,
             "password": "robot",
             "User_role": "robot",
-            "token": self.__token
+            "token": self._token
             }
         resp = requests.post(url, verify=True, data=data).text
         return resp
     
     def set_robot_home(self, robot_data:RobotData, angles:list) -> str:
-        url = f"https://{self.__host}:{self.__port}/HomePosition"
+        url = f"https://{self._host}:{self._port}/HomePosition"
         data = {
             "Robot": robot_data.name,
-            "token": self.__token,
+            "token": self._token,
             "Code" : robot_data.code
             }
         for i in range(1, len(angles)+1):
@@ -98,31 +98,31 @@ class system(__user.system):
         return resp
 
     def delete_tool(self, id) -> str:
-        url = f"https://{self.__host}:{self.__port}/URTD"
+        url = f"https://{self._host}:{self._port}/URTD"
         data = {
             "id": id,
-            "token": self.__token
+            "token": self._token
             }
         resp = requests.post(url, verify=True, data=data).text
         return resp
 
     def delete_robot(self, robot_data:RobotData) -> str:
-        url = f"https://{self.__host}:{self.__port}/DelRobot"
+        url = f"https://{self._host}:{self._port}/DelRobot"
         data = {
             "Robot": robot_data.name,
-            "token": self.__token
+            "token": self._token
             }
         resp = requests.post(url, verify=True, data=data).text
         return resp
 
     def add_user(self, name:str, password:str) -> None:
         if password != "robot":
-            url = f"https://{self.__host}:{self.__port}/CreateAccount"
+            url = f"https://{self._host}:{self._port}/CreateAccount"
             data = {
                 "name": name,
                 "password": password,
                 "User_role": roles.Roles.user,
-                "token": self.__token
+                "token": self._token
                 }
             resp = requests.post(url, verify=True, data=data).text
             return resp
@@ -130,29 +130,29 @@ class system(__user.system):
             raise TypeError("The word robot cannot be used in the password because it is reserved")
     
     def get_robots(self) -> str:
-        url = f"https://{self.__host}:{self.__port}/GetRobots"
+        url = f"https://{self._host}:{self._port}/GetRobots"
         data = {
-            "token": self.__token
+            "token": self._token
             }
         resp = requests.post(url, verify=True, data=data).text
         return resp
 
     def get_robot(self, robot_data:RobotData) -> str:
-        url = f"https://{self.__host}:{self.__port}/GetRobot"
+        url = f"https://{self._host}:{self._port}/GetRobot"
         data = {
             "Robot": robot_data.name,
-            "token": self.__token
+            "token": self._token
             }
         resp = requests.post(url, verify=True, data=data).text
         return resp
     
     def add_log(self, robot_data:RobotData, type:str, text:str) -> bool:
-        url = f"https://{self.__host}:{str(self.__port)}/URLogs"
+        url = f"https://{self._host}:{str(self._port)}/URLogs"
         data = {
             "Robot": robot_data.name,
             "Type": type,
             "Text": text,
-            "token": self.__token
+            "token": self._token
             }
         return bool(requests.post(url, verify=True, data=data).text)
     

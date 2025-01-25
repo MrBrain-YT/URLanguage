@@ -24,28 +24,28 @@ class tokenizer():
 class system(__admin.system):
 
     def __init__(self, host:str, port:int, *token:str) -> None:
-        self.host = host
-        self.port = port
-        self.token = token if external_token == "" else external_token
-        super().__init__(host, port, self.token)
+        self._host = host
+        self._port = port
+        self._token = token if external_token == "" else external_token
+        super().__init__(host, port, self._token)
         
     def delete_user(self, name:str) -> str:
-        url = f"https://{self.host}:{self.port}/DeleteAccount"
+        url = f"https://{self._host}:{self._port}/DeleteAccount"
         data = {
             "name": name,
-            "token": self.token
+            "token": self._token
             }
         resp = requests.post(url, verify=True, data=data).text
         return resp
 
     def add_user(self, name:str, password:str, role:str) -> str:
         if password != "robot":
-            url = f"https://{self.host}:{self.port}/CreateAccount"
+            url = f"https://{self._host}:{self._port}/CreateAccount"
             data = {
                 "name": name,
                 "password": password,
                 "user_role": role,
-                "token": self.token
+                "token": self._token
                 }
             resp = requests.post(url, verify=True, data=data).text
             return resp
@@ -53,17 +53,17 @@ class system(__admin.system):
             raise TypeError("The word robot cannot be used in the password because it is reserved")
     
     def get_user_accounts(self) -> str:
-        url = f"https://{self.host}:{self.port}/GetAccounts"
-        data = {"token": self.token}
+        url = f"https://{self._host}:{self._port}/GetAccounts"
+        data = {"token": self._token}
         resp = requests.post(url, verify=True, data=data).text
         return resp
     
     def change_password(self, name:str, password:str) -> str:
-        url = f"https://{self.host}:{self.port}/ChangePass"
+        url = f"https://{self._host}:{self._port}/ChangePass"
         data = {
             "name": name,
             "password": password,
-            "token": self.token
+            "token": self._token
         }
         resp = requests.post(url, verify=True, data=data).text
         return resp
@@ -80,22 +80,22 @@ class system(__admin.system):
     #     ↓↓↓↓↓↓
     
     def get_account_token(self, name:str, password:str) -> str:
-        url = f"https://{self.host}:{self.port}/GetToken"
+        url = f"https://{self._host}:{self._port}/GetToken"
         data = {
             "name": name,
             "password": password,
-            "token": self.token
+            "token": self._token
         }
         resp = requests.post(url, verify=True, data=data).text
         return resp
     
     def change_token(self, name:str, password:str) -> str:
         if password != "robot":
-            url = f"https://{self.host}:{self.port}/ChangeToken"
+            url = f"https://{self._host}:{self._port}/ChangeToken"
             data = {
                 "name": name,
                 "password": password,
-                "token": self.token
+                "token": self._token
             }
             resp = requests.post(url, verify=True, data=data).text
             return resp
@@ -103,9 +103,9 @@ class system(__admin.system):
             raise TypeError("The word robot cannot be used in the password because it is reserved")
     
     def export_cache(self) -> list[dict]:
-        url = f"https://{self.__host}:{self.__port}/ExportCache"
+        url = f"https://{self._host}:{self._port}/ExportCache"
         data = {
-            "token": self.__token
+            "token": self._token
         }
         resp = requests.post(url, verify=True, data=data).text
         robots = ast.literal_eval(resp.split("\n")[0].replace("robots = ", ""))
@@ -114,9 +114,9 @@ class system(__admin.system):
         return [robots, tools, frames]
     
     def import_cache(self, robots:dict, tools:dict, frames:dict) -> str:
-        url = f"https://{self.__host}:{self.__port}/ImportCache"
+        url = f"https://{self._host}:{self._port}/ImportCache"
         data = {
-            "token": self.__token,
+            "token": self._token,
             "robots": str(robots),
             "tools": str(tools),
             "frames": str(frames)
