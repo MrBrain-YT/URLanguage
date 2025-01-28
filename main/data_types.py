@@ -138,6 +138,7 @@ class Spline():
     def start_move(self) -> "ReturnData":
         full_trajectory_points = self.__create_spline_points()
         arc_points = self.system.xyz_to_angle(self.robot_data, full_trajectory_points, is_multi_point=True)
+        
         new_speeds:list = []
         for index, point in enumerate(arc_points):
             old_point:AnglePos = None

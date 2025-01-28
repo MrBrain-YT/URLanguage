@@ -15,24 +15,24 @@ robot = RobotData("First", "654123")
 
 """ Data vizualization test """
 " Smooth angle vizualization "
-pos = AnglePos().from_list([200,40,0,150])
-print(system.ptp(robot, pos))
-p0 = XYZPos().from_list([201,150,100])
-p1 = XYZPos().from_list([200,-50,100])
-p2 = XYZPos().from_list([-200,310,100])
-p3 = XYZPos().from_list([400,50,100])
-p1.smooth_endPoint = p2
-p1.smooth_distance = 200
-p2.smooth_endPoint = p3
-p2.smooth_distance = 200
-p4 = XYZPos().from_list([43,9,-20])
+# pos = AnglePos().from_list([200,40,0,150])
+# print(system.ptp(robot, pos))
+# p0 = XYZPos().from_list([201,150,100])
+# p1 = XYZPos().from_list([200,-50,100])
+# p2 = XYZPos().from_list([-200,310,100])
+# p3 = XYZPos().from_list([400,50,100])
+# p1.smooth_endPoint = p2
+# p1.smooth_distance = 200
+# p2.smooth_endPoint = p3
+# p2.smooth_distance = 200
+# p4 = XYZPos().from_list([43,9,-20])
 
-lin1 = system.lin(robot, p1, start=p0)
-# Current pos is p3
-lin4 = system.lin(robot, p4, start=lin1.trjectory[-1])
+# lin1 = system.lin(robot, p1, start=p0)
+# # Current pos is p3
+# lin4 = system.lin(robot, p4, start=lin1.trjectory[-1])
 
-trajectory= []+lin1.trjectory+lin4.trjectory
-Vizualization(trajectory=trajectory).show_trajectory_plot()
+# trajectory= []+lin1.trjectory+lin4.trjectory
+# Vizualization(trajectory=trajectory).show_trajectory_plot()
 " Spline vizualization "
 # spl = Spline(robot_data=robot, system=system, num_points=10)
 # p0 = XYZPos().from_list([201,150,100])
@@ -43,8 +43,15 @@ Vizualization(trajectory=trajectory).show_trajectory_plot()
 # trajectory = spl.start_move()
 # print(trajectory)
 # Vizualization(trajectory=trajectory.trjectory).show_trajectory_plot()
+" CIRC vizualization "
+p1 = XYZPos().from_list([100, -100, 67.117])
+p2 = XYZPos().from_list([200, 0, 67.117])
+p3 = XYZPos().from_list([100, 100, 67.117])
+trajectory = system.circ(robot, [p1,p2,p3], 20, speed_multiplier=1).trjectory
+Vizualization(trajectory=trajectory).show_trajectory_plot()
 
 """ PTP test """
+# system.ptp(robot, AnglePos().from_list([100,140,-40,10]))
 # pos = AnglePos().from_list([300,40,0,150])
 # print(system.lin(robot, pos))
 # robot.ptp_lin("First", [100,140,-40,10], "654123")
@@ -53,20 +60,14 @@ Vizualization(trajectory=trajectory).show_trajectory_plot()
 # robot.ptp([200,60,30,20])
 # print(robot.ptp([0,-100,-20,100]))
 
-""" CIRC test """
-# robot.circ("First", "654123", [[100, -100, 67.117],[200, 0, 67.117],[100, 100, 67.117]], 20, speed_multiplier=1)
-# robot.ptp("First", [100,140,-40,10], "654123")
-
 """ Drawing cube """
 # p1 = robot.xyz_to_angle("First", [[100, -100, 67.117]], "654123") # рисуем квадрат
 # p2 = robot.xyz_to_angle("First", [[200, 0, 67.117]], "654123")
 # p3 = robot.xyz_to_angle("First", [100, 100, 67.117], "654123")
 # p4 = robot.xyz_to_angle("First", [100, 100, 67.117], "654123")
 # p5 = robot.xyz_to_angle("First", [100, 0, 67.117], "654123")
-
-
-# robot.ptp_lin("First", p1, "654123")
-# robot.ptp_lin("First", p2, "654123")
+# robot.ptp("First", p1, "654123")
+# robot.ptp("First", p2, "654123")
 # robot.lin("First", p3, "654123")
 # robot.lin("First", p4, "654123")
 # robot.lin("First", p5, "654123")

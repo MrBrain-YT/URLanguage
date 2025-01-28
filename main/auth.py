@@ -8,6 +8,7 @@ the received token is transferred to the tokenizer class and the system class is
 """
 
 import requests
+import json
 
 import __user as User
 import __admin as Admin
@@ -27,9 +28,9 @@ class Auth():
                 "password": password, 
                 "server_token": self.server_token
                 }
-            resp = requests.post(url, verify=True, data=data).text
-            if resp != "False":
-                return resp.split(",")[0], resp.split(",")[1] 
+            response:dict = json.loads(requests.post(url, verify=True, data=data).text)
+            if response.get("status") != False:
+                return response.get("role"), response.get("token") 
             else:
                 raise ValueError("Wrong login or password")
         except:
