@@ -28,9 +28,9 @@ class Auth():
                 "password": password, 
                 "server_token": self.server_token
                 }
-            response:dict = json.loads(requests.post(url, verify=True, data=data).text)
+            response:dict = json.loads(requests.post(url, verify=True, json=data).text)
             if response.get("status") != False:
-                return response.get("role"), response.get("token") 
+                return response.get("role"), response.get("token")
             else:
                 raise ValueError("Wrong login or password")
         except:
@@ -46,8 +46,8 @@ class Auth():
         if password != "robot":
             role, token = self.__get_role(name, password)
             if role != "user":
-                    Admin.tokenizer(token).set_token()
-                    return Admin
+                Admin.tokenizer(token).set_token()
+                return Admin
             else:
                 raise TypeError("You don't have enough rights")
             

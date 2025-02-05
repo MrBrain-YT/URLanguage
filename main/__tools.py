@@ -1,3 +1,5 @@
+import json
+
 import requests
 
 class Tools():
@@ -8,16 +10,16 @@ class Tools():
         self.token = token
 
 
-    def get_tool_info(self, name:str) -> str:
+    def get_tool_info(self, name:str) -> dict:
         url = f"https://{self.host}:{self.port}/URTool"
         data = {
             "id": name,
             "type": "",
             "token": self.token
             }
-        return requests.post(url, verify=True, data=data).text
+        return json.loads(requests.post(url, verify=True, json=data).text)
     
-    def set_tool_info(self, name:str, config:str) -> str:
+    def set_tool_info(self, name:str, config:str) -> dict:
         url = f"https://{self.host}:{self.port}/URTool"
         data = {
             "id": name,
@@ -25,4 +27,4 @@ class Tools():
             "config": config,
             "token": self.token
             }
-        return requests.post(url, verify=True, data=data).text
+        return json.loads(requests.post(url, verify=True, json=data).text)

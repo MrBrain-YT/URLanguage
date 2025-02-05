@@ -4,6 +4,8 @@ The tokenizer class is used to automatically send a token to the system class af
 
 """
 
+import json
+
 import requests
 
 import __tools
@@ -24,12 +26,12 @@ class tokenizer():
 class system(__robot.Robot, __tools.Tools):
     
     def __init__(self, host:str, port:int, *token:str) -> None:
-        self._token = token if external_token == "" else external_token
+        self._token = token[0] if external_token == "" else external_token
         self._port = port
         self._host = host
         super().__init__(self._host, self._port, self._token)
         
-    def set_emergency(self, robot_data:RobotData, state:bool) -> str:
+    def set_emergency(self, robot_data:RobotData, state:bool) -> dict:
         url = f"https://{self._host}:{self._port}/Emergency"
         data = {
             "Robot": robot_data.name,
@@ -37,7 +39,7 @@ class system(__robot.Robot, __tools.Tools):
             "State": str(state),
             "Code" : robot_data.code
             }
-        resp = requests.post(url, verify=True, data=data).text
+        resp = json.loads(requests.post(url, verify=True, json=data).text)
         return resp
         
 
