@@ -17,7 +17,7 @@ class Tools():
             "type": "",
             "token": self.token
             }
-        return json.loads(requests.post(url, verify=True, json=data).text)
+        return requests.post(url, verify=True, json=data).json()
     
     def set_tool_info(self, name:str, config:str) -> dict:
         url = f"https://{self.host}:{self.port}/URTool"
@@ -27,4 +27,4 @@ class Tools():
             "config": config,
             "token": self.token
             }
-        return json.loads(requests.post(url, verify=True, json=data).text)
+        return requests.post(url, verify=True, json=data).json()

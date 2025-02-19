@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass
 
 import requests
-from scipy.interpolate import splprep, splev
+from scipy.interpolate import CubicSpline
 import numpy as np
 
 if TYPE_CHECKING:
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 class XYZPos:
     
-    def __init__(self, smooth_distance:float=5, smooth_endPoint:Union['XYZPos', None]=None, **kwargs):
+    def __init__(self, smooth_distance:float=5, smooth_endPoint:Union['XYZPos', list['XYZPos'],None]=None, **kwargs):
         self.x = kwargs.get('x')
         self.y = kwargs.get('y')
         self.z = kwargs.get('z')
@@ -103,40 +103,126 @@ class AnglePos:
         else:
             raise ValueError('Export type must be a list or dictionary')
            
-class Spline():
+class Spline:
     
-    def __init__(self, robot_data:"RobotData", system:Union["super_admin.system", "admin.system", "user.system"], points_count:int=25, speed_multiplier:float=1, num_points:int=100):
-        self.points:list[XYZPos] = []
+    def __init__(self, robot_data: "RobotData", system: Union["super_admin.system", "admin.system", "user.system"], points_count: int = 25, speed_multiplier: float = 1, num_points: int = 50):
+        self.points: list[XYZPos] = []
         self.system = system
         self.robot_data = robot_data
         self.lin_step_count = points_count
         self.speed_multiplier = speed_multiplier
         self.num_points = num_points
         
-    def add_point(self, *point: XYZPos) -> None:
-        for _point in point:
-            self.points.append(_point)
+    def add_point(self, *point: XYZPos) -> "Spline":
+        self.points.extend(point)
+        return self
+    
+    def catmull_rom_spline(self, P0, P1, P2, P3, t):
+        """ Вычисляет точку на сплайне Катмулл-Рома """
+        t2 = t * t
+        t3 = t2 * t
+
+        f1 = -0.5 * t3 + t2 - 0.5 * t
+        f2 =  1.5 * t3 - 2.5 * t2 + 1
+        f3 = -1.5 * t3 + 2.0 * t2 + 0.5 * t
+        f4 =  0.5 * t3 - 0.5 * t2
+
+        return P0 * f1 + P1 * f2 + P2 * f3 + P3 * f4
+
+    def catmull_rom_chain(self, points):
+        """ Генерирует гладкий сплайн через все заданные точки """
+        new_points = []
+
+        for i in range(1, len(points) - 2):  # Берем по 4 точки для интерполяции
+            P0, P1, P2, P3 = points[i - 1], points[i], points[i + 1], points[i + 2]
+            for t in np.linspace(0, 1, self.num_points // (len(points) - 3)):
+                new_point = self.catmull_rom_spline(P0, P1, P2, P3, t)
+                new_points.append(new_point)
+
+        return np.array(new_points)
+
+    def _create_catmull_rom_spline_points(self) -> list[XYZPos]:
+        """ Преобразует точки в сглаженный сплайн Катмулл-Рома """
+        if len(self.points) < 4:
+            raise ValueError("Для сглаженного сплайна требуется минимум 4 точки.")
+
+        # Преобразуем точки в массив NumPy
+        converted_points = np.array([point.export_to(export_type=list) for point in self.points])
+
+        # Добавляем фиктивные крайние точки (чтобы не терять сегменты)
+        extended_points = np.vstack([converted_points[0], converted_points, converted_points[-1]])
+
+        # Генерируем сглаженный сплайн
+        new_points = self.catmull_rom_chain(extended_points)
+
+        # Конвертируем обратно в список XYZPos
+        return [XYZPos().from_list(point) for point in new_points]
+    
+    # def _create_scypy_spline_points(self) -> list[XYZPos]:
+    #     converted_points = []
+    #     for point in self.points:
+    #         converted_points.append(point.export_to(export_type=list))
+    #     points = np.array(converted_points)
+    #     x, y, z = points[:, 0], points[:, 1], points[:, 2]
+    #     tck, u = splprep([x, y, z], s=0)
         
-    def __create_spline_points(self) -> list[XYZPos]:
+    #     u_fine = np.linspace(0, 1, self.num_points)
+    #     x_new, y_new, z_new = splev(u_fine, tck)
+
+    #     new_points = np.array([x_new, y_new, z_new]).T
+        
+    #     points = []
+    #     for point in new_points:
+    #         points.append(XYZPos().from_list([point[0], point[1], point[2]]))
+    #     return points
+
+    def _create_scypy_spline_points(self) -> list[XYZPos]:
+        # Преобразование точек в массив numpy
         converted_points = []
         for point in self.points:
             converted_points.append(point.export_to(export_type=list))
         points = np.array(converted_points)
         x, y, z = points[:, 0], points[:, 1], points[:, 2]
-        tck, u = splprep([x, y, z], s=0)
-        
-        u_fine = np.linspace(0, 1, self.num_points)
-        x_new, y_new, z_new = splev(u_fine, tck)
 
+        # Создание параметра t (равномерное распределение)
+        t = np.linspace(0, 1, len(points))
+
+        # Создание кубических сплайнов для x(t), y(t), z(t)
+        cs_x = CubicSpline(t, x)
+        cs_y = CubicSpline(t, y)
+        cs_z = CubicSpline(t, z)
+
+        # Генерация новых точек с равномерным шагом
+        t_fine = np.linspace(0, 1, self.num_points)
+        x_new = cs_x(t_fine)
+        y_new = cs_y(t_fine)
+        z_new = cs_z(t_fine)
+
+        # Формирование массива новых точек
         new_points = np.array([x_new, y_new, z_new]).T
-        
+
+        # Преобразование новых точек в объекты XYZPos
         points = []
         for point in new_points:
             points.append(XYZPos().from_list([point[0], point[1], point[2]]))
         return points
-        
+
+    def _create_linear_spline_points(self) -> list[XYZPos]:
+        """ Преобразует точки в линейный сплайн """
+        if len(self.points) < 2:
+            raise ValueError("Для линейного сплайна требуется минимум 2 точки.")
+
+        # Преобразуем точки в массив NumPy
+        converted_points = np.array([point.export_to(export_type=list) for point in self.points])
+
+        # Генерируем линейный сплайн
+        new_points = self.linear_spline(converted_points)
+
+        # Конвертируем обратно в список XYZPos
+        return [XYZPos().from_list(point) for point in new_points]
+            
     def start_move(self) -> "ReturnData":
-        full_trajectory_points = self.__create_spline_points()
+        full_trajectory_points = self._create_scypy_spline_points()
         arc_points = self.system.xyz_to_angle(self.robot_data, full_trajectory_points, is_multi_point=True)
         
         new_speeds:list = []
@@ -148,8 +234,7 @@ class Spline():
                     "Robot": self.robot_data.name,
                     "token": self.system._token
                     }
-                resp = requests.post(url, verify=True, data=data).text
-                current_angles = json.loads(resp.replace("'", '"'))
+                current_angles = requests.post(url, verify=True, data=data).json()
                 
                 if isinstance(current_angles, list):
                     old_point = AnglePos().from_dict(current_angles[-1])

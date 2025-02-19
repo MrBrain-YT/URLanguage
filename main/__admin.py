@@ -42,8 +42,8 @@ class system(__user.system):
             "Robot": robot_data.name,
             "token": self.token
             }
-        resp = requests.post(url, files=file, json=data).text
-        return json.loads(resp)
+        resp = requests.post(url, files=file, json=data).json
+        return resp
     
     def bind_kinematics(self, robot_data:RobotData, folder_name:str) -> dict:
         url = f"https://{self._host}:{self._port}/BindKinematics"
@@ -52,8 +52,8 @@ class system(__user.system):
             "Kinematics": folder_name,
             "token": self.token
             }
-        resp = requests.post(url, verify=True, json=data).text
-        return json.loads(resp)
+        resp = requests.post(url, verify=True, json=data).json
+        return resp
 
     def add_tool(self, id:str) -> dict:
         url = f"https://{self._host}:{self._port}/URTC"
@@ -61,8 +61,8 @@ class system(__user.system):
             "Id": id,
             "token": self._token
         }
-        resp = requests.post(url, verify=True, json=data).text
-        return json.loads(resp)
+        resp = requests.post(url, verify=True, json=data).json
+        return resp
     
     def add_robot(self, robot_data:RobotData, angle_count:int, kinematics:str="None") -> dict:
         responces = {}
@@ -75,8 +75,8 @@ class system(__user.system):
             "Code": robot_data.code,
             "token": self._token
             }
-        resp = requests.post(url, verify=True, json=data).text
-        responces["CreateRobot"] = json.loads(resp)
+        resp = requests.post(url, verify=True, json=data).json
+        responces["CreateRobot"] = resp
         # Add account for so that the robot itself sends some system commands
         url = f"https://{self._host}:{self._port}/CreateAccount"
         data = {
@@ -85,8 +85,8 @@ class system(__user.system):
             "User_role": "robot",
             "token": self._token
             }
-        resp = requests.post(url, verify=True, json=data).text
-        responces["CreateAccount"] = json.loads(resp)
+        resp = requests.post(url, verify=True, json=data).json
+        responces["CreateAccount"] = resp
         return responces
     
     def set_robot_home(self, robot_data:RobotData, angles:list) -> dict:
@@ -98,8 +98,8 @@ class system(__user.system):
             }
         for i in range(1, len(angles)+1):
             data[f"J{i}"] = angles[i-1]
-        resp = requests.post(url, verify=True, json=data).text
-        return json.loads(resp)
+        resp = requests.post(url, verify=True, json=data).json
+        return resp
 
     def delete_tool(self, id) -> dict:
         url = f"https://{self._host}:{self._port}/URTD"
@@ -107,8 +107,8 @@ class system(__user.system):
             "id": id,
             "token": self._token
             }
-        resp = requests.post(url, verify=True, json=data).text
-        return json.loads(resp)
+        resp = requests.post(url, verify=True, json=data).json
+        return resp
 
     def delete_robot(self, robot_data:RobotData) -> dict:
         url = f"https://{self._host}:{self._port}/DelRobot"
@@ -116,8 +116,8 @@ class system(__user.system):
             "Robot": robot_data.name,
             "token": self._token
             }
-        resp = requests.post(url, verify=True, json=data).text
-        return json.loads(resp)
+        resp = requests.post(url, verify=True, json=data).json
+        return resp
 
     def add_user(self, name:str, password:str) -> dict:
         if password != "robot":
@@ -128,8 +128,8 @@ class system(__user.system):
                 "User_role": roles.Roles.user,
                 "token": self._token
                 }
-            resp = requests.post(url, verify=True, json=data).text
-            return json.loads(resp)
+            resp = requests.post(url, verify=True, json=data).json
+            return resp
         else:
             raise TypeError("The word robot cannot be used in the password because it is reserved")
     
@@ -138,8 +138,8 @@ class system(__user.system):
         data = {
             "token": self._token
             }
-        resp = requests.post(url, verify=True, json=data).text
-        return json.loads(resp)
+        resp = requests.post(url, verify=True, json=data).json
+        return resp
 
     def get_robot(self, robot_data:RobotData) -> dict:
         url = f"https://{self._host}:{self._port}/GetRobot"
@@ -147,8 +147,8 @@ class system(__user.system):
             "Robot": robot_data.name,
             "token": self._token
             }
-        resp = requests.post(url, verify=True, json=data).text
-        return json.loads(resp)
+        resp = requests.post(url, verify=True, json=data).json
+        return resp
     
     def add_log(self, robot_data:RobotData, type:str, text:str) -> bool:
         url = f"https://{self._host}:{str(self._port)}/URLogs"
@@ -158,5 +158,5 @@ class system(__user.system):
             "Text": text,
             "token": self._token
             }
-        return json.loads(requests.post(url, verify=True, json=data).text)["status"]
+        return requests.post(url, verify=True, json=data).json()["status"]
     

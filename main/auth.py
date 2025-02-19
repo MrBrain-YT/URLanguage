@@ -28,8 +28,8 @@ class Auth():
                 "password": password, 
                 "server_token": self.server_token
                 }
-            response:dict = json.loads(requests.post(url, verify=True, json=data).text)
-            if response.get("status") != False:
+            response = requests.post(url, verify=True, json=data).json()
+            if response.get("status"):
                 return response.get("role"), response.get("token")
             else:
                 raise ValueError("Wrong login or password")

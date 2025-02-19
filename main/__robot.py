@@ -1,13 +1,16 @@
 import json
-import ast
-from typing import Union
+from typing import Union, TYPE_CHECKING
 
 import requests
 import numpy as np
-from scipy.interpolate import CubicSpline
 
 from data_types import RobotData, AnglePos, XYZPos, ReturnData
-import smoothing
+from utils.trajectory_creator import TrajectoryConstructor
+
+if TYPE_CHECKING:
+    import __super_admin as super_admin
+    import __admin as admin
+    import __user as user
 
 class Robot():
     
@@ -27,7 +30,7 @@ class Robot():
             "Robot": robot_data.name,
             "token": self._token
         }
-        response = json.loads(requests.post(url, verify=True, json=data).text)["data"]
+        response = requests.post(url, verify=True, json=data).json()["data"]
         return response
         
     def check_emergency(self, robot_data:RobotData) -> bool:
@@ -37,7 +40,7 @@ class Robot():
             "token": self._token,
             "Code": robot_data.code
         }
-        response = json.loads(requests.post(url, verify=True, json=data).text)["data"]
+        response = requests.post(url, verify=True, json=data).json()["data"]
         return response
 
     def set_robot_position(self, robot_data:RobotData, angles:Union[AnglePos, list[AnglePos]], is_multi_point:bool=False) -> dict:
@@ -56,8 +59,7 @@ class Robot():
                 converted_angles.append(angle.export_to(export_type=dict).get("data"))
             data["angles_data"] = str(converted_angles)
         request_data = requests.post(url, verify=True, json=data)
-        responce = json.loads(request_data.text)
-        return responce, request_data.status_code
+        return request_data.json(), request_data.status_code
     
     def set_robot_speed(self, robot_data:RobotData, angles_speed:Union[AnglePos, list[AnglePos]], is_multi_point:bool=False) -> dict:
         # Set motor speed
@@ -76,8 +78,7 @@ class Robot():
                 converted_speeds.append(angle_speed.export_to(export_type=dict).get("data"))
             data["angles_data"] = str(converted_speeds)
         request_data = requests.post(url, verify=True, json=data)
-        responce = json.loads(request_data.text)
-        return responce, request_data.status_code
+        return request_data.json(), request_data.status_code
         
     def move_xyz(self, robot_data:RobotData, position:XYZPos) -> dict:
         url = f"https://{self._host}:{str(self._port)}/Move_XYZ"
@@ -102,7 +103,7 @@ class Robot():
         angles_count = self.get_angles_count(robot_data)
         for count in range(angles_count):
             data[f"J{count+1}"] = angles.angles[f"J{count+1}"]
-        return json.loads(requests.post(url, verify=True, json=data).text)
+        return requests.post(url, verify=True, json=data).json()
 
     def xyz_to_angle(self, robot_data:RobotData, positions:list[XYZPos], is_multi_point:bool=False) -> Union[AnglePos, list[AnglePos]]:
         new_positions = []
@@ -116,7 +117,7 @@ class Robot():
             "Code" : robot_data.code,
             "positions_data": str(new_positions)
             }
-        result = json.loads(requests.post(url, verify=True, json=data).text)["data"]
+        result = requests.post(url, verify=True, json=data).json()["data"]
         if not is_multi_point:
             return AnglePos().from_dict(result[0], rewrite=True)
         else:
@@ -136,7 +137,7 @@ class Robot():
         angles_count = self.get_angles_count(robot_data)
         for count in range(angles_count):
             data[f"J{count+1}"] = angles.angles[f"J{count+1}"]
-        return json.loads(requests.post(url, verify=True, json=data).text)
+        return requests.post(url, verify=True, json=data).json()
     
     @staticmethod
     def calculate_speed(start_angles:AnglePos, end_angles:AnglePos, steps:int) -> list:
@@ -165,7 +166,7 @@ class Robot():
             "token": self._token,
             "Code": robot_data.code
             }
-        current_angles = json.loads(requests.post(url, verify=True, json=data).text)["data"]
+        current_angles = requests.post(url, verify=True, json=data).json()["data"]
         
         start_angles:AnglePos
         if isinstance(current_angles, list):
@@ -225,30 +226,23 @@ class Robot():
                 "Robot": robot_data.name,
                 "token": self._token
                 }
-            responce_data = json.loads(requests.post(url, verify=True, json=data).text)["data"]
+            responce_data = requests.post(url, verify=True, json=data).json()["data"]
             start = XYZPos().from_dict(responce_data)
         
         arc_points = []
         if end_point.smooth_endPoint is None:
             full_trajectory_points = self.generate_line_points(start, end_point, num_points)
-            arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
         else:
             cartesian_points = []
             updating_end_point = end_point
-            while True:
-                if updating_end_point.smooth_endPoint is None:
-                    break
-                else:
-                    cartesian_points.append(updating_end_point)
-                    updating_end_point = updating_end_point.smooth_endPoint
-
+            cartesian_points = TrajectoryConstructor().find_smoothing_points(updating_end_point, cartesian_points)
+            
+            # Create trajectory
             updating_start_point = start
             full_trajectory_points = [start]
-            for point in cartesian_points:
-                smoothed_arc_points = smoothing.get_smothed_arc_points(updating_start_point, point)
-                full_trajectory_points += smoothed_arc_points
-                updating_start_point = smoothed_arc_points[-1]
-            arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
+            full_trajectory_points = TrajectoryConstructor().smooth_trajectory(robot_data, full_trajectory_points, cartesian_points, updating_start_point, lin_step_count)
+            
+        arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
         
         new_speeds:list = []
         for index, point in enumerate(arc_points):
@@ -259,7 +253,7 @@ class Robot():
                     "Robot": robot_data.name,
                     "token": self._token
                     }
-                current_angles = json.loads(requests.post(url, verify=True, json=data).text)["data"]
+                current_angles = requests.post(url, verify=True, json=data).json()["data"]
                 
                 if isinstance(current_angles, list):
                     old_point = AnglePos().from_dict(current_angles[-1])
@@ -282,40 +276,32 @@ class Robot():
         response_codes = {"Set position": pos_code,
                          "Set speed": speed_code}
         return ReturnData(responce=response_data, code=response_codes, trjectory=full_trajectory_points)
-        
-    @staticmethod
-    def __interpolate_points(start_point:XYZPos, intermediate_point:XYZPos, end_point:XYZPos, num_points:int):
-        # Создание массивов x, y и z координат для начальной, конечной и вспомогательной точек
-        x = np.array([start_point.x, intermediate_point.x, end_point.x])
-        y = np.array([start_point.y, intermediate_point.y, end_point.y])
-        z = np.array([start_point.z, intermediate_point.z, end_point.z])
 
-        # Интерполяция координат по кубическим сплайнам
-        t = [0, 0.5, 1]  # Параметры времени для начальной, вспомогательной и конечной точек
-        cs = CubicSpline(t, np.vstack([x, y, z]).T)
-        # Генерация равномерных значений параметра времени от 0 до 1
-        t_interp = np.linspace(0, 1, num=num_points)
-
-        # Вычисление интерполированных координат x, y и z
-        x_interp, y_interp, z_interp = cs(t_interp).T
-
-        # Возвращение массива интерполированных точек
-        interpolated_points = np.column_stack((x_interp, y_interp, z_interp))
-        return interpolated_points
-
-    def circ(self, robot_data:RobotData, points_xyz:list[XYZPos], count_points:int, speed_multiplier:float=1, lin_step_count:int=100) -> ReturnData:
+    def circ(self, robot_data:RobotData, points_xyz:list[XYZPos], count_points:int, speed_multiplier:float=1, lin_step_count:int=10) -> ReturnData:
         if not self.check_emergency(robot_data):
-            coords = self.__interpolate_points(
-                points_xyz[0],
-                points_xyz[1],
-                points_xyz[2],
-                count_points)
-
-            full_trajectory_points = []
-            for point in coords.tolist():
-                full_trajectory_points.append(XYZPos(x=point[0], y=point[1], z=point[2]))
-                
-            arc_points:list[AnglePos] = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
+            if points_xyz[2].smooth_endPoint is None:
+                coords, _start_smooth_point, _start_smoothing_point = self.generate_arc_points(
+                    points_xyz[0],
+                    points_xyz[1],
+                    points_xyz[2],
+                    count_points
+                    )
+                full_trajectory_points = []
+                for point in coords:
+                    full_trajectory_points.append(XYZPos(x=point[0], y=point[1], z=point[2]))
+                    
+                arc_points:list[AnglePos] = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
+            else:
+                # Find smoothing points
+                cartesian_points = [points_xyz]
+                updating_end_point:Union[list[XYZPos], XYZPos] = points_xyz
+                cartesian_points = TrajectoryConstructor().find_smoothing_points(updating_end_point, cartesian_points)
+                # Create trajectory
+                updating_start_point = points_xyz[0]
+                full_trajectory_points = [points_xyz[0]]
+                full_trajectory_points = TrajectoryConstructor().smooth_trajectory(robot_data, full_trajectory_points, cartesian_points, updating_start_point, count_points)
+                            
+                arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
                 
             new_speeds:list = []
             for index, point in enumerate(arc_points):
@@ -326,7 +312,7 @@ class Robot():
                         "Robot": robot_data.name,
                         "token": self._token
                         }
-                    current_angles = json.loads(requests.post(url, verify=True, json=data).text)["data"]
+                    current_angles = requests.post(url, verify=True, json=data).json()["data"]
                     
                     if isinstance(current_angles, list):
                         old_point = AnglePos().from_dict(current_angles[-1])
@@ -358,7 +344,7 @@ class Robot():
             "Robot": robot_data.name,
             "token": self._token
             }
-        return json.loads(requests.post(url, verify=True, json=data).text)
+        return requests.post(url, verify=True, json=data).json()
 
     def get_last_log(self, robot_data:RobotData) -> dict:
         url = f"https://{self._host}:{str(self._port)}/URLog"
@@ -366,7 +352,7 @@ class Robot():
             "Robot": robot_data.name,
             "token": self._token
             }
-        return json.loads(requests.post(url, verify=True, json=data).text)["data"].split("\n")[-1]
+        return requests.post(url, verify=True, json=data).json()["data"].split("\n")[-1]
     
     def debug(self, robot_data:RobotData, text:str) -> dict:
         url = f"https://{self._host}:{str(self._port)}/URLogs"
@@ -375,7 +361,7 @@ class Robot():
             "Type": "DEBUG",
             "Text": text
             }
-        return json.loads(requests.post(url, verify=True, json=data).text)
+        return requests.post(url, verify=True, json=data).json()
     
     def set_program(self, robot_data:RobotData, program:str) -> dict:
         url = f"https://{self._host}:{str(self._port)}/SetProgram"
@@ -385,7 +371,7 @@ class Robot():
             "token": self._token,
             "Code" : robot_data.code
             }
-        return json.loads(requests.post(url, verify=True, json=data).text)
+        return requests.post(url, verify=True, json=data).json()
     
     def delete_program(self, robot_data:RobotData) -> dict:
         url = f"https://{self._host}:{str(self._port)}/DeleteProgram"
@@ -394,4 +380,4 @@ class Robot():
             "token": self._token,
             "Code" : robot_data.code
             }
-        return json.loads(requests.post(url, verify=True, json=data).text)
+        return requests.post(url, verify=True, json=data).json()

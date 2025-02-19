@@ -39,7 +39,7 @@ class system(__robot.Robot, __tools.Tools):
             "State": str(state),
             "Code" : robot_data.code
             }
-        resp = json.loads(requests.post(url, verify=True, json=data).text)
+        resp = requests.post(url, verify=True, json=data).json()
         return resp
         
 
