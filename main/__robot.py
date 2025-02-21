@@ -1,8 +1,6 @@
-import json
 from typing import Union, TYPE_CHECKING
 
 import requests
-import numpy as np
 
 from data_types import RobotData, AnglePos, XYZPos, ReturnData
 from utils.trajectory_creator import TrajectoryConstructor
@@ -11,6 +9,9 @@ if TYPE_CHECKING:
     import __super_admin as super_admin
     import __admin as admin
     import __user as user
+    
+# Trajectory sending variable (work in lin and circ functions)
+TRAJECTORY_SEND_SWITCH = True # True - send data, false - don't send data
 
 class Robot():
     
@@ -34,14 +35,16 @@ class Robot():
         return response
         
     def check_emergency(self, robot_data:RobotData) -> bool:
-        url = f"https://{self._host}:{str(self._port)}/GetRobotEmergency"
-        data = {
-            "Robot": robot_data.name,
-            "token": self._token,
-            "Code": robot_data.code
-        }
-        response = requests.post(url, verify=True, json=data).json()["data"]
-        return response
+        if TRAJECTORY_SEND_SWITCH:
+            url = f"https://{self._host}:{str(self._port)}/GetRobotEmergency"
+            data = {
+                "Robot": robot_data.name,
+                "token": self._token,
+                "Code": robot_data.code
+            }
+            response = requests.post(url, verify=True, json=data).json()["data"]
+            return response
+        return False
 
     def set_robot_position(self, robot_data:RobotData, angles:Union[AnglePos, list[AnglePos]], is_multi_point:bool=False) -> dict:
         # Set position
@@ -221,13 +224,16 @@ class Robot():
     
     def lin(self, robot_data:RobotData, end_point:XYZPos, num_points:int=25, lin_step_count:int=25, speed_multiplier:int=1, start:XYZPos=None) -> ReturnData:
         if start is None:
-            url = f"https://{self._host}:{str(self._port)}/GetXYZPosition"
-            data = {
-                "Robot": robot_data.name,
-                "token": self._token
-                }
-            responce_data = requests.post(url, verify=True, json=data).json()["data"]
-            start = XYZPos().from_dict(responce_data)
+            if TRAJECTORY_SEND_SWITCH:
+                url = f"https://{self._host}:{str(self._port)}/GetXYZPosition"
+                data = {
+                    "Robot": robot_data.name,
+                    "token": self._token
+                    }
+                responce_data = requests.post(url, verify=True, json=data).json()["data"]
+                start = XYZPos().from_dict(responce_data)
+            else:
+                start = XYZPos().from_list([0, 0, 0])
         
         arc_points = []
         if end_point.smooth_endPoint is None:
@@ -242,70 +248,11 @@ class Robot():
             full_trajectory_points = [start]
             full_trajectory_points = TrajectoryConstructor().smooth_trajectory(robot_data, full_trajectory_points, cartesian_points, updating_start_point, lin_step_count)
             
-        arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
-        
-        new_speeds:list = []
-        for index, point in enumerate(arc_points):
-            old_point:AnglePos = None
-            if index == 0:
-                url = f"https://{self._host}:{str(self._port)}/GetCurentPosition"
-                data = {
-                    "Robot": robot_data.name,
-                    "token": self._token
-                    }
-                current_angles = requests.post(url, verify=True, json=data).json()["data"]
-                
-                if isinstance(current_angles, list):
-                    old_point = AnglePos().from_dict(current_angles[-1])
-                else:
-                    old_point = AnglePos().from_dict(current_angles)
-
-                old_point = AnglePos().from_list(old_point)
-                
-            else:
-                old_point = arc_points[index-1]
-            
-            speed = self._speed_multiplier(self.calculate_lin(old_point, point, lin_step_count), speed_multiplier)
-            new_speeds.append(AnglePos().from_list(speed))
-        
-        position_responce, pos_code = self.set_robot_position(robot_data, arc_points, is_multi_point=True)
-        speed_responce, speed_code = self.set_robot_speed(robot_data, new_speeds, is_multi_point=True)
-        
-        response_data = {"Set position": position_responce,
-                         "Set speed": speed_responce}
-        response_codes = {"Set position": pos_code,
-                         "Set speed": speed_code}
-        return ReturnData(responce=response_data, code=response_codes, trjectory=full_trajectory_points)
-
-    def circ(self, robot_data:RobotData, points_xyz:list[XYZPos], count_points:int, speed_multiplier:float=1, lin_step_count:int=10) -> ReturnData:
-        if not self.check_emergency(robot_data):
-            if points_xyz[2].smooth_endPoint is None:
-                coords, _start_smooth_point, _start_smoothing_point = self.generate_arc_points(
-                    points_xyz[0],
-                    points_xyz[1],
-                    points_xyz[2],
-                    count_points
-                    )
-                full_trajectory_points = []
-                for point in coords:
-                    full_trajectory_points.append(XYZPos(x=point[0], y=point[1], z=point[2]))
-                    
-                arc_points:list[AnglePos] = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
-            else:
-                # Find smoothing points
-                cartesian_points = [points_xyz]
-                updating_end_point:Union[list[XYZPos], XYZPos] = points_xyz
-                cartesian_points = TrajectoryConstructor().find_smoothing_points(updating_end_point, cartesian_points)
-                # Create trajectory
-                updating_start_point = points_xyz[0]
-                full_trajectory_points = [points_xyz[0]]
-                full_trajectory_points = TrajectoryConstructor().smooth_trajectory(robot_data, full_trajectory_points, cartesian_points, updating_start_point, count_points)
-                            
-                arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
-                
+        if TRAJECTORY_SEND_SWITCH:
+            arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
             new_speeds:list = []
             for index, point in enumerate(arc_points):
-                old_point:list = []
+                old_point:AnglePos = None
                 if index == 0:
                     url = f"https://{self._host}:{str(self._port)}/GetCurentPosition"
                     data = {
@@ -323,20 +270,82 @@ class Robot():
                     
                 else:
                     old_point = arc_points[index-1]
-
+                
                 speed = self._speed_multiplier(self.calculate_lin(old_point, point, lin_step_count), speed_multiplier)
                 new_speeds.append(AnglePos().from_list(speed))
-                
+            
             position_responce, pos_code = self.set_robot_position(robot_data, arc_points, is_multi_point=True)
             speed_responce, speed_code = self.set_robot_speed(robot_data, new_speeds, is_multi_point=True)
             
             response_data = {"Set position": position_responce,
-                         "Set speed": speed_responce}
+                            "Set speed": speed_responce}
             response_codes = {"Set position": pos_code,
                             "Set speed": speed_code}
             return ReturnData(responce=response_data, code=response_codes, trjectory=full_trajectory_points)
         else:
+            return ReturnData(responce=None, code=None, trjectory=full_trajectory_points)
+
+    def circ(self, robot_data:RobotData, points_xyz:list[XYZPos], count_points:int, speed_multiplier:float=1, lin_step_count:int=10) -> ReturnData:
+        if not self.check_emergency(robot_data):
+            if points_xyz[2].smooth_endPoint is None:
+                coords, _start_smooth_point, _start_smoothing_point = self.generate_arc_points(
+                    points_xyz[0],
+                    points_xyz[1],
+                    points_xyz[2],
+                    count_points
+                    )
+                full_trajectory_points = []
+                for point in coords:
+                    full_trajectory_points.append(XYZPos(x=point[0], y=point[1], z=point[2]))
+            else:
+                # Find smoothing points
+                cartesian_points = [points_xyz]
+                updating_end_point:Union[list[XYZPos], XYZPos] = points_xyz
+                cartesian_points = TrajectoryConstructor().find_smoothing_points(updating_end_point, cartesian_points)
+                # Create trajectory
+                updating_start_point = points_xyz[0]
+                full_trajectory_points = [points_xyz[0]]
+                full_trajectory_points = TrajectoryConstructor().smooth_trajectory(robot_data, full_trajectory_points, cartesian_points, updating_start_point, count_points)
+              
+            if TRAJECTORY_SEND_SWITCH:            
+                arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
+                new_speeds:list = []
+                for index, point in enumerate(arc_points):
+                    old_point:list = []
+                    if index == 0:
+                        url = f"https://{self._host}:{str(self._port)}/GetCurentPosition"
+                        data = {
+                            "Robot": robot_data.name,
+                            "token": self._token
+                            }
+                        current_angles = requests.post(url, verify=True, json=data).json()["data"]
+                        
+                        if isinstance(current_angles, list):
+                            old_point = AnglePos().from_dict(current_angles[-1])
+                        else:
+                            old_point = AnglePos().from_dict(current_angles)
+
+                        old_point = AnglePos().from_list(old_point)
+                        
+                    else:
+                        old_point = arc_points[index-1]
+
+                    speed = self._speed_multiplier(self.calculate_lin(old_point, point, lin_step_count), speed_multiplier)
+                    new_speeds.append(AnglePos().from_list(speed))
+                    
+                position_responce, pos_code = self.set_robot_position(robot_data, arc_points, is_multi_point=True)
+                speed_responce, speed_code = self.set_robot_speed(robot_data, new_speeds, is_multi_point=True)
+                
+                response_data = {"Set position": position_responce,
+                            "Set speed": speed_responce}
+                response_codes = {"Set position": pos_code,
+                                "Set speed": speed_code}
+                return ReturnData(responce=response_data, code=response_codes, trjectory=full_trajectory_points)
+            else:
+                return ReturnData(responce=None, code=None, trjectory=full_trajectory_points)
+        else:
             return "The robot is currently in emergency stop"
+            
 
     def get_log(self, robot_data:RobotData) -> dict:
         url = f"https://{self._host}:{str(self._port)}/URLog"

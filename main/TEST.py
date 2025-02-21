@@ -2,9 +2,11 @@
 import auth
 from data_types import AnglePos, RobotData, XYZPos, Spline
 from utils.vizualizer import Vizualization
+import __robot
 
+__robot.TRAJECTORY_SEND_SWITCH = False
 
-system = auth.Auth("localhost", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a")\
+system = auth.Auth("localhost", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a", symulate=True)\
     .super_admin("SuperAdmin", "12345").system("localhost", 5000)
     
 robot = RobotData("First", "654123")
@@ -111,7 +113,7 @@ p3.smooth_distance = 30
 p4.smooth_endPoint = [p5, p6, p7]
 p4.smooth_distance = 30
 trajectory = system.lin(robot, p1, 20, speed_multiplier=1).trjectory
-Vizualization(trajectory=trajectory).show_trajectory_plot()
+Vizualization(trajectory=trajectory).show_plotly_trajectory_plot()
 " show all trajectory"
 # Vizualization(trajectory=trajectory1+trajectory2).show_trajectory_plot()
 

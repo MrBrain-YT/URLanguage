@@ -8,31 +8,35 @@ the received token is transferred to the tokenizer class and the system class is
 """
 
 import requests
-import json
 
 import __user as User
 import __admin as Admin
 import __super_admin as SuperAdmin
 
 class Auth():
-    def __init__(self, ip:str, port:int, server_token:str) -> None:
+    def __init__(self, ip:str, port:int, server_token:str, symulate:bool=False) -> None:
+        ''' Symulate is parametr use symulating autentification '''
         self.ip = ip
         self.port = port
         self.server_token = server_token
+        self.symulate = symulate
 
     def __get_role(self, name, password):
         try:
-            url = f"https://{self.ip}:{self.port}/GetRoleAccount"
-            data = {
-                "name": name,
-                "password": password, 
-                "server_token": self.server_token
-                }
-            response = requests.post(url, verify=True, json=data).json()
-            if response.get("status"):
-                return response.get("role"), response.get("token")
+            if self.symulate:
+                return "SuperAdmin", "123456789*qwerty"
             else:
-                raise ValueError("Wrong login or password")
+                url = f"https://{self.ip}:{self.port}/GetRoleAccount"
+                data = {
+                    "name": name,
+                    "password": password, 
+                    "server_token": self.server_token
+                    }
+                response = requests.post(url, verify=True, json=data).json()
+                if response.get("status"):
+                    return response.get("role"), response.get("token")
+                else:
+                    raise ValueError("Wrong login or password")
         except:
             raise ValueError("Wrong login or password")
 

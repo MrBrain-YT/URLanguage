@@ -7,7 +7,6 @@ The tokenizer class is used to automatically send a token to the system class af
 """
 
 import shutil
-import json
 
 import requests
 

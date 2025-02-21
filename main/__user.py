@@ -4,8 +4,6 @@ The tokenizer class is used to automatically send a token to the system class af
 
 """
 
-import json
-
 import requests
 
 import __tools

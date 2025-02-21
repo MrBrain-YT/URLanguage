@@ -1,7 +1,6 @@
 """ Classes for creating robots positions or robot data"""
 
 from typing import Union, TYPE_CHECKING
-import json
 from dataclasses import dataclass
 
 import requests
@@ -268,6 +267,6 @@ class RobotData:
         
 @dataclass   
 class ReturnData():
-    responce: str
-    code: int
+    responce: Union[str, dict, None]
+    code: Union[str, dict, None]
     trjectory: list[XYZPos] = None
