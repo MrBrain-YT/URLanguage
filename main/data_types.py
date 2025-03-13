@@ -14,15 +14,19 @@ if TYPE_CHECKING:
 
 class XYZPos:
     
-    def __init__(self, smooth_distance:float=5, smooth_endPoint:Union['XYZPos', list['XYZPos'],None]=None, **kwargs):
+    def __init__(self, smooth_distance:float=5, smooth_endPoint:Union['XYZPos', list['XYZPos'],None]=None, circ_angle:Union[float, None]=None, **kwargs):
         self.x = kwargs.get('x')
         self.y = kwargs.get('y')
         self.z = kwargs.get('z')
         self.smooth_distance = smooth_distance
         self.smooth_endPoint = smooth_endPoint
+        self.circ_angle = circ_angle
         
     def __str__(self):
         return f"XYZPos: {[self.x, self.y, self.z]}"
+    
+    def __eq__(self, value:"XYZPos"):
+        return self.x == value.x and self.y == value.y and self.z == value.z
         
     @classmethod
     def from_dict(cls, data:dict):

@@ -19,6 +19,7 @@ class Robot():
         self._host = host
         self._port = port
         self._token = token
+        self.last_point_position = None
         
     def _speed_multiplier(self, speed_list:list, multiplier:float):
         for index, value in enumerate(speed_list):
@@ -233,7 +234,10 @@ class Robot():
                 responce_data = requests.post(url, verify=True, json=data).json()["data"]
                 start = XYZPos().from_dict(responce_data)
             else:
-                start = XYZPos().from_list([0, 0, 0])
+                if self.last_point_position is not None:
+                    start = self.last_point_position
+                else:
+                    start = XYZPos().from_list([0, 0, 0])
         
         arc_points = []
         if end_point.smooth_endPoint is None:
@@ -247,6 +251,8 @@ class Robot():
             updating_start_point = start
             full_trajectory_points = [start]
             full_trajectory_points = TrajectoryConstructor().smooth_trajectory(robot_data, full_trajectory_points, cartesian_points, updating_start_point, lin_step_count)
+            
+        self.last_point_position = full_trajectory_points[-1]
             
         if TRAJECTORY_SEND_SWITCH:
             arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
@@ -285,19 +291,24 @@ class Robot():
         else:
             return ReturnData(responce=None, code=None, trjectory=full_trajectory_points)
 
-    def circ(self, robot_data:RobotData, points_xyz:list[XYZPos], count_points:int, speed_multiplier:float=1, lin_step_count:int=10) -> ReturnData:
+    def circ(self, robot_data:RobotData, points_xyz:list[XYZPos], count_points:int, arc_angle:float=None, speed_multiplier:float=1, lin_step_count:int=10) -> ReturnData:
         if not self.check_emergency(robot_data):
+            if arc_angle < 18:
+                raise ValueError("Arc angle must be greater than 18 degrees.")
+            
             if points_xyz[2].smooth_endPoint is None:
-                coords, _start_smooth_point, _start_smoothing_point = self.generate_arc_points(
+                coords, _start_smooth_point, _start_smoothing_point, _smooth_arc_points = TrajectoryConstructor().generate_arc_points(
                     points_xyz[0],
                     points_xyz[1],
                     points_xyz[2],
-                    count_points
+                    count_points,
+                    arc_angle=arc_angle
                     )
                 full_trajectory_points = []
                 for point in coords:
                     full_trajectory_points.append(XYZPos(x=point[0], y=point[1], z=point[2]))
             else:
+                points_xyz[2].circ_angle = arc_angle
                 # Find smoothing points
                 cartesian_points = [points_xyz]
                 updating_end_point:Union[list[XYZPos], XYZPos] = points_xyz
@@ -307,6 +318,8 @@ class Robot():
                 full_trajectory_points = [points_xyz[0]]
                 full_trajectory_points = TrajectoryConstructor().smooth_trajectory(robot_data, full_trajectory_points, cartesian_points, updating_start_point, count_points)
               
+            self.last_point_position = full_trajectory_points[-1]
+            
             if TRAJECTORY_SEND_SWITCH:            
                 arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
                 new_speeds:list = []

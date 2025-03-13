@@ -37,7 +37,7 @@ robot = RobotData("First", "654123")
 # lin4 = system.lin(robot, p4, start=lin1.trjectory[-1])
 
 # trajectory1= []+lin1.trjectory+lin4.trjectory
-# Vizualization(trajectory=trajectory1).show_trajectory_plot()
+# Vizualization(trajectory=trajectory1).show_mathplotlib_trajectory_plot()
 " Spline vizualization "
 # spl = Spline(robot_data=robot, system=system, num_points=10)
 # p0 = XYZPos().from_list([201,150,100])
@@ -47,7 +47,7 @@ robot = RobotData("First", "654123")
 # spl.add_point(p0, p1, p2, p3)
 # trajectory = spl.start_move()
 # print(trajectory)
-# Vizualization(trajectory=trajectory.trjectory).show_trajectory_plot()
+# Vizualization(trajectory=trajectory.trjectory).show_mathplotlib_trajectory_plot()
 " CIRC vizualization "
 ' CIRC to CIRC '
 # p1 = XYZPos().from_list([100, -100, 67.117])
@@ -56,19 +56,20 @@ robot = RobotData("First", "654123")
 # p6 = XYZPos().from_list([100, -100, 0])
 # p5 = XYZPos().from_list([200, 0, 0])
 # p4 = XYZPos().from_list([100, 100, 0])
+# p6.circ_angle = 90
 # p3.smooth_endPoint = [p4, p5, p6]
-# p3.smooth_distance = 50
-# trajectory = system.circ(robot, [p1,p2,p3], 20, speed_multiplier=1).trjectory
-# Vizualization(trajectory=trajectory).show_trajectory_plot()
-' CIRC to LIN '
+# p3.smooth_distance = 20
+# trajectory = system.circ(robot, [p1,p2,p3], 20, speed_multiplier=1, arc_angle=300).trjectory
+# Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
+' CIRC to LIN ' # TODO: repair
 # p1 = XYZPos().from_list([100, -100, 67.117])
 # p2 = XYZPos().from_list([200, 0, 67.117])
 # p3 = XYZPos().from_list([100, 100, 67.117])
 # p4 = XYZPos().from_list([200, 100, 0])
 # p3.smooth_endPoint = p4
 # p3.smooth_distance = 30
-# trajectory = system.circ(robot, [p1,p2,p3], 20, speed_multiplier=1).trjectory
-# Vizualization(trajectory=trajectory).show_trajectory_plot()
+# trajectory = system.circ(robot, [p1,p2,p3], 20, speed_multiplier=1, arc_angle=450).trjectory
+# Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
 ' LIN to LIN '
 # p_start = XYZPos().from_list([200, 200, 100])
 # p1 = XYZPos().from_list([100, 100, 67.117])
@@ -81,22 +82,8 @@ robot = RobotData("First", "654123")
 # trajectory2 = system.lin(robot, p2, 20, speed_multiplier=1, start=trajectory[-1]).trjectory
 # trajectory3 = system.lin(robot, p4, 20, speed_multiplier=1, start=trajectory2[-1]).trjectory
 # trajectory_full = trajectory + trajectory2 + trajectory3
-# Vizualization(trajectory=trajectory_full).show_trajectory_plot()
+# Vizualization(trajectory=trajectory_full).show_mathplotlib_trajectory_plot()
 ' LIN to CIRC using CIRC function '
-# p1 = XYZPos().from_list([100, -100, 67.117])
-# p2 = XYZPos().from_list([200, 0, 67.117])
-# p3 = XYZPos().from_list([100, 100, 67.117])
-# p4 = XYZPos().from_list([100, -100, -60])
-# p5 = XYZPos().from_list([100, -100, -61])
-# p6 = XYZPos().from_list([200, 0, -60])
-# p7 = XYZPos().from_list([100, 100, -60])
-# p3.smooth_endPoint = p4
-# p3.smooth_distance = 30
-# p4.smooth_endPoint = [p5, p6, p7]
-# p4.smooth_distance = 30
-# trajectory = system.circ(robot, [p1, p2, p3], 20, speed_multiplier=1).trjectory
-# Vizualization(trajectory=trajectory).show_trajectory_plot()
-' LIN to CIRC using LIN function '
 p1 = XYZPos().from_list([100, -100, 67.117])
 p2 = XYZPos().from_list([200, 0, 67.117])
 p3 = XYZPos().from_list([100, 100, 67.117])
@@ -104,18 +91,34 @@ p4 = XYZPos().from_list([100, -100, -60])
 p5 = XYZPos().from_list([100, -100, -61])
 p6 = XYZPos().from_list([200, 0, -60])
 p7 = XYZPos().from_list([100, 100, -60])
-p1.smooth_endPoint = p2
-p1.smooth_distance = 30
-p2.smooth_endPoint = p3
-p2.smooth_distance = 30
 p3.smooth_endPoint = p4
 p3.smooth_distance = 30
 p4.smooth_endPoint = [p5, p6, p7]
 p4.smooth_distance = 30
-trajectory = system.lin(robot, p1, 20, speed_multiplier=1).trjectory
-Vizualization(trajectory=trajectory).show_plotly_trajectory_plot()
+trajectory = system.circ(robot, [p1, p2, p3], 100, speed_multiplier=1, arc_angle=390).trjectory
+Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
+' LIN to CIRC using LIN function '
+# p1 = XYZPos().from_list([100, -100, 67.117])
+# p2 = XYZPos().from_list([200, 0, 67.117])
+# p3 = XYZPos().from_list([100, 100, 67.117])
+# p4 = XYZPos().from_list([100, -100, -60])
+# p5 = XYZPos().from_list([100, -100, -61])
+# p6 = XYZPos().from_list([200, 0, -60])
+# p7 = XYZPos().from_list([100, 100, -60])
+# p1.smooth_endPoint = p2
+# p1.smooth_distance = 30
+# p2.smooth_endPoint = p3
+# p2.smooth_distance = 30
+# p3.smooth_endPoint = p4
+# p3.smooth_distance = 30
+# # p7.circ_angle = 300
+# p4.smooth_endPoint = [p5, p6, p7]
+# p4.smooth_distance = 30
+# trajectory = system.lin(robot, p1, 20, speed_multiplier=1).trjectory
+# # trajectory2 = system.lin(robot, p3, 20, speed_multiplier=1).trjectory
+# Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot() # +trajectory2
 " show all trajectory"
-# Vizualization(trajectory=trajectory1+trajectory2).show_trajectory_plot()
+# Vizualization(trajectory=trajectory1+trajectory2).show_mathplotlib_trajectory_plot()
 
 """ PTP test """
 # system.ptp(robot, AnglePos().from_list([100,140,-40,10]))
