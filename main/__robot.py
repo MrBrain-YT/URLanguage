@@ -47,7 +47,7 @@ class Robot():
             return response
         return False
 
-    def set_robot_position(self, robot_data:RobotData, angles:Union[AnglePos, list[AnglePos]], is_multi_point:bool=False) -> dict:
+    def set_robot_position(self, robot_data:RobotData, angles:Union[AnglePos, list[AnglePos]], is_multi_point:bool=False, last_point_position:Union[XYZPos, None]=None) -> dict:
         # Set position
         url = f"https://{self._host}:{str(self._port)}/CurentPosition"
         data = {
@@ -62,6 +62,8 @@ class Robot():
             for angle in angles:
                 converted_angles.append(angle.export_to(export_type=dict).get("data"))
             data["angles_data"] = str(converted_angles)
+        if last_point_position is not None:
+            self.last_point_position = last_point_position
         request_data = requests.post(url, verify=True, json=data)
         return request_data.json(), request_data.status_code
     

@@ -160,24 +160,6 @@ class Spline:
 
         # Конвертируем обратно в список XYZPos
         return [XYZPos().from_list(point) for point in new_points]
-    
-    # def _create_scypy_spline_points(self) -> list[XYZPos]:
-    #     converted_points = []
-    #     for point in self.points:
-    #         converted_points.append(point.export_to(export_type=list))
-    #     points = np.array(converted_points)
-    #     x, y, z = points[:, 0], points[:, 1], points[:, 2]
-    #     tck, u = splprep([x, y, z], s=0)
-        
-    #     u_fine = np.linspace(0, 1, self.num_points)
-    #     x_new, y_new, z_new = splev(u_fine, tck)
-
-    #     new_points = np.array([x_new, y_new, z_new]).T
-        
-    #     points = []
-    #     for point in new_points:
-    #         points.append(XYZPos().from_list([point[0], point[1], point[2]]))
-    #     return points
 
     def _create_scypy_spline_points(self) -> list[XYZPos]:
         # Преобразование точек в массив numpy
@@ -252,7 +234,7 @@ class Spline:
             speed = self.system._speed_multiplier(self.system.calculate_lin(old_point, point, self.lin_step_count), self.speed_multiplier)
             new_speeds.append(AnglePos().from_list(speed))
             
-        position_responce = self.system.set_robot_position(self.robot_data, arc_points, is_multi_point=True)
+        position_responce = self.system.set_robot_position(self.robot_data, arc_points, is_multi_point=True, last_point_position=self.points[-1])
         speed_responce = self.system.set_robot_speed(self.robot_data, new_speeds, is_multi_point=True)
         
         response_data = {"Set position": position_responce.text,

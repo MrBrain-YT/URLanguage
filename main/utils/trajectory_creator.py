@@ -51,7 +51,7 @@ class TrajectoryConstructor:
         return v / norm
 
     # Функция для вычисления точки на биссектрисе угла ACB
-    def bisector_point(self, A, B, C, distance, distanse_multiplier):
+    def bisector_point(self, A, B, C, distance, distance_multiplier):
         # Векторы от C к A и от C к B
         vector_CA = A - C
         vector_CB = B - C
@@ -64,7 +64,7 @@ class TrajectoryConstructor:
         bisector = self.normalize(norm_CA + norm_CB)
         
         # Точка на биссектрисе на расстоянии distance / distanse_delimitr от точки C
-        point_on_bisector = C + bisector * (distance * distanse_multiplier)
+        point_on_bisector = C + bisector * (distance * distance_multiplier)
         return point_on_bisector
     
 
@@ -129,34 +129,32 @@ class TrajectoryConstructor:
         """
         Вычисляет центр и радиус окружности, проходящей через три точки в 3D-пространстве.
         """
-        A, B, C = np.array(p1), np.array(p2), np.array(p3)
-
-        # Векторы между точками
-        AB = B - A
-        AC = C - A
-
-        # Векторное произведение — нормаль к плоскости
-        normal = np.cross(AB, AC)
-        normal = normal / np.linalg.norm(normal)  # Нормализация
-
-        # Средние точки отрезков AB и AC
-        mid_AB = (A + B) / 2
-        mid_AC = (A + C) / 2
-
-        # Вектора, перпендикулярные к AB и AC в плоскости
-        perp_AB = np.cross(normal, AB)
-        perp_AC = np.cross(normal, AC)
-
-        # Решаем систему уравнений для пересечения серединных перпендикуляров
-        A_matrix = np.array([perp_AB, -perp_AC]).T
-        b_vector = mid_AC - mid_AB
-
-        t = np.linalg.lstsq(A_matrix, b_vector, rcond=None)[0]
-        center = mid_AB + t[0] * perp_AB
-
+        p1, p2, p3 = np.array(p1, dtype=np.float64), np.array(p2, dtype=np.float64), np.array(p3, dtype=np.float64)
+    
+        # Векторы, образующие плоскость
+        v1 = p2 - p1
+        v2 = p3 - p1
+        
+        # Нахождение нормали плоскости
+        normal = np.cross(v1, v2)
+        normal /= np.linalg.norm(normal)
+        
+        # Середина между p1 и p3
+        mid = (p1 + p3) / 2
+        
+        # Направляющие векторы серединных перпендикуляров
+        perp1 = np.cross(v1, normal)
+        perp2 = np.cross(v2, normal)
+        
+        # Решаем систему уравнений для нахождения центра окружности
+        A = np.vstack((perp1, -perp2)).T
+        B = mid - (p1 + p2) / 2
+        t = np.linalg.lstsq(A, B, rcond=None)[0][0]
+        center = (p1 + p2) / 2 + t * perp1
+        
         # Радиус окружности
-        radius = np.linalg.norm(center - A)
-
+        radius = np.linalg.norm(center - p1)
+        
         return center, radius, normal
     
     @staticmethod
@@ -179,123 +177,62 @@ class TrajectoryConstructor:
         distance = np.linalg.norm(p1 - p2)
         
         return distance
-
-    def generate_arc_points(self, start_point:XYZPos, middle_point:XYZPos, end_point:XYZPos, num_points:int=25, distance:int=None, arc_angle:float=None, circles_count:int=0, is_check:Union[None, bool]=False, rebuild:bool=False):
-        """
-        Генерирует `num_points` точек на дуге, проходящей через три заданные точки.
-        """
-        if distance is None:
-            distance = end_point.smooth_distance
-            
-        start_arc_angle = arc_angle
-            
-        # test generate arc points
-        if is_check is not None:
-            if not is_check:
-                elements = self.generate_arc_points(
-                    start_point,
-                    middle_point,
-                    end_point,
-                    num_points,
-                    distance,
-                    arc_angle,
-                    circles_count=0,
-                    is_check=True
-                    )
-                
-                if len(elements) == 2:
-                    if elements[1] == 1:
-                        return elements[0][0], elements[0][1], elements[0][2], elements[0][3]
         
-        smooth_arc_angle = arc_angle + 2 if arc_angle is not None else None
-
+    def generate_arc_3d(self, start_point: XYZPos, middle_point: XYZPos, end_point: XYZPos, num_points: int = 25, distance: int = None, arc_angle: float = None):
+        # Конвертируем точки в список для удобства
         converted_start_point = start_point.export_to(export_type=list)
         converted_middle_point = middle_point.export_to(export_type=list)
         converted_end_point = end_point.export_to(export_type=list)
-
-        center, radius, normal = self.circle_center(converted_start_point, converted_middle_point, converted_end_point)
-
+        
+        p1 = np.array(converted_start_point)
+        p2 = np.array(converted_middle_point)
+        p3 = np.array(converted_end_point)
+        center, radius, normal = self.circle_center(p1, p2, p3)
+        
         # Векторы от центра к точкам
-        v1 = np.array(converted_start_point) - center
-        v3 = np.array(converted_end_point) - center
-        # Если угол окружности не задан, вычисляем его по точкам
+        v1 = np.array(p1) - center
+        v3 = np.array(p3) - center
+        
         if arc_angle is None:
+            # Если угол не задан, вычисляем угол между p1 и p3
+            arc_angle = np.degrees(np.arccos(np.dot(v1, v3) / (np.linalg.norm(v1) * np.linalg.norm(v3))))
+        
+        # Определяем угол дуги на основе параметра arc_angle (в радианах)
+        theta_total = np.radians(arc_angle)  # Преобразуем угол в радианы
+        theta = np.linspace(0, theta_total, num_points)
+        
+        # Ортонормированные базисные векторы в плоскости окружности
+        u = v1 / np.linalg.norm(v1)
+        w = np.cross(normal, u)
+        
+        # Вычисляем координаты всех точек дуги
+        arc_points = [XYZPos().from_list(coord) for coord in np.array([center + radius * (np.cos(t) * u + np.sin(t) * w) for t in theta]).tolist()]
+        
+        if distance is not None:
+            # Длина дуги между двумя точками на окружности
+            arc_length = radius * np.radians(arc_angle)
             
-            arc_angle = np.arctan2(np.linalg.norm(np.cross(v1, v3)), np.dot(v1, v3))
-            # Проверяем направление угла с учетом нормали
-            if np.dot(normal, np.cross(v1, v3)) < 0:
-                arc_angle = 2 * np.pi - arc_angle
-                if rebuild:
-                    arc_angle -= 2 * np.pi
-                    # arc_angle = -arc_angle
-                
-                arc_angle += (360 * circles_count) * (math.pi / 180)
-            elif np.dot(normal, np.cross(v1, v3)) > 0:
-                arc_angle += (360 * circles_count) * (math.pi / 180)
-
+            # Вычисляем угол для целевой точки
+            theta_end = np.radians((1 - distance / arc_length) * arc_angle)  # Угол для точки от конца
+            theta_start = np.radians(distance / arc_length * arc_angle)  # Угол для точки от начала
+            
+            # Индекс точки на дуге, до которой нужно вычислить
+            target_index = np.searchsorted(theta, theta_end)
+            
+            # Обрезаем список точек дуги до целевой точки
+            arc_points = arc_points[:target_index]
+            
+            # Вычисляем точки на дуге на нужных расстояниях
+            target_point_from_start = XYZPos().from_list(center + radius * (np.cos(theta_start) * u + np.sin(theta_start) * w))
+            target_point_from_end = XYZPos().from_list(center + radius * (np.cos(theta_end) * u + np.sin(theta_end) * w))
+            
+            return arc_points, target_point_from_end, target_point_from_start
+        
         else:
-            arc_angle = arc_angle * (math.pi / 180)
+            # Если distance == None, возвращаем все точки до угла (arc_angle)
+            arc_points = [XYZPos().from_list(coord) for coord in np.array([center + radius * (np.cos(t) * u + np.sin(t) * w) for t in np.linspace(0, np.radians(arc_angle), num_points)])]
+            return arc_points, end_point, start_point
 
-        # Ось вращения - нормаль к плоскости
-        axis = normal / np.linalg.norm(normal)
-
-        # Генерируем углы поворота
-        angles = np.linspace(0, arc_angle, num_points)
-
-        # Функция вращения вектора вокруг оси
-        def rotate_vector(v, axis, theta):
-            """
-            Вращает вектор v вокруг оси axis на угол theta (радианы).
-            """
-            axis = axis / np.linalg.norm(axis)
-            cos_theta = np.cos(theta)
-            sin_theta = np.sin(theta)
-            return (v * cos_theta +
-                    np.cross(axis, v) * sin_theta +
-                    axis * np.dot(axis, v) * (1 - cos_theta))
-
-        # Генерируем точки дуги
-        arc_points = [center + rotate_vector(v1, axis, theta) for theta in angles]
-        # Генерируем точки дуги для сглаживания
-        if smooth_arc_angle is None:
-            smooth_arc_points = arc_points
-        else:
-            smooth_angles = np.linspace(0, smooth_arc_angle * (math.pi /180), num_points)
-            smooth_arc_points = [center + rotate_vector(v1, axis, theta) for theta in smooth_angles]
-
-        # Длина всей дуги
-        arc_length = radius * arc_angle  
-
-        # Обрабатываем запрос точки от конца
-        target_point_from_end = None
-        if distance is not None:
-            target_length = arc_length - distance  # Длина от начала до искомой точки
-            if target_length < 0:
-                # print("Ошибка: расстояние больше длины дуги, возвращаем начальную точку.")
-                target_point_from_end = XYZPos().from_list(arc_points[0])
-            else:
-                target_angle = (target_length / arc_length) * arc_angle
-                target_point_from_end = XYZPos().from_list(center + rotate_vector(v1, axis, target_angle))
-
-        # Обрабатываем запрос точки от начала
-        target_point_from_start = None
-        if distance is not None:
-            if distance > arc_length:
-                # print("Ошибка: расстояние больше длины дуги, возвращаем конечную точку.")
-                target_point_from_start = XYZPos().from_list(arc_points[-1])
-            else:
-                target_angle = (distance / arc_length) * arc_angle
-                target_point_from_start = XYZPos().from_list(center + rotate_vector(v1, axis, target_angle))
-
-        if is_check and start_arc_angle is None:
-            two_point = XYZPos().from_list(arc_points[2])
-            one_distance = self.distance_between_points(start_point, middle_point)
-            two_distance = self.distance_between_points(two_point, middle_point)
-            # TODO: repaire circles count
-            if one_distance < two_distance:
-                return self.generate_arc_points(start_point, middle_point, end_point, num_points, distance, start_arc_angle, circles_count=0, is_check=None, rebuild=True), 1
-
-        return arc_points, target_point_from_end, target_point_from_start, smooth_arc_points
     
     @staticmethod
     def point_on_trajectory(start_point: XYZPos, end_point: XYZPos, distance:float):
@@ -375,40 +312,41 @@ class TrajectoryConstructor:
                     # LIN to CIRC
                     # Find smooth distance end LIN point
                     end_smoothing_point = self.point_on_trajectory(point, full_trajectory_points[-1], point.smooth_distance)
-                    # Find smooth distance start CIRC point
-                    _coords, _end_smoothing_point, start_smoothing_point, _smooth_arc_points = self.generate_arc_points(
+                    # Find smooth distance start CIRC point and create CIRC trajectory
+                    circ_coords, _start_smoothing_point, _end_smoothing_point  = self.generate_arc_3d(
                         point.smooth_endPoint[0],
                         point.smooth_endPoint[1],
                         point.smooth_endPoint[2],
                         count_points,
+                        distance=0,
+                        arc_angle=point.smooth_endPoint[2].circ_angle
+                        )
+
+                    circ_coords, start_smoothing_point, _end_smoothing_point  = self.generate_arc_3d(
+                        circ_coords[-1],
+                        point.smooth_endPoint[1],
+                        point.smooth_endPoint[0],
+                        count_points,
                         distance=point.smooth_distance,
                         arc_angle=point.smooth_endPoint[2].circ_angle
                         )
-                    
+                        
                     # Find middle spline point
+                    smoothed_angle_point = self.point_between(end_smoothing_point, point, 80)
                     A = np.array(end_smoothing_point.export_to(list))
-                    C = np.array(point.export_to(list))
+                    C = np.array(smoothed_angle_point.export_to(list))
                     B = np.array(start_smoothing_point.export_to(list))
-                    middle_spline_point = XYZPos.from_list(self.bisector_point(A, B, C, point.smooth_endPoint[2].smooth_distance, 2).tolist())
+                    middle_spline_point = XYZPos.from_list(self.bisector_point(A, B, C, -point.smooth_endPoint[2].smooth_distance, 2).tolist())
                     
                     # Add LIN trajectory to full trajectory
                     full_trajectory_points.append(end_smoothing_point)
                     
                     # Create smoothed trajectory
                     smoothed_trajectory = Spline(robot_data, system=self).add_point(end_smoothing_point, middle_spline_point, start_smoothing_point, start_smoothing_point)._create_catmull_rom_spline_points()
-                    
-                    # Create new CIRC trajectory
-                    circles_count = point.smooth_endPoint[2].circ_angle // 360 if point.smooth_endPoint[2].circ_angle is not None else 0
-                    circ_coords, _end_smoothing_point, _start_smoothing_point, _smooth_arc_points = self.generate_arc_points(
-                        start_smoothing_point,
-                        point.smooth_endPoint[1],
-                        point.smooth_endPoint[2],
-                        count_points,
-                        circles_count=circles_count
-                        )
-                    
+
+                    circ_coords.reverse()
                     full_trajectory_points += smoothed_trajectory
-                    full_trajectory_points.extend([XYZPos.from_list(cord) for cord in circ_coords])
+                    full_trajectory_points.extend([cord for cord in circ_coords])
                     
             elif isinstance(point, list):
                 if isinstance(point[2].smooth_endPoint, XYZPos):
@@ -416,35 +354,35 @@ class TrajectoryConstructor:
                     # Find smooth distance start CIRC point
                     if point[2].circ_angle < 18:
                         raise ValueError("Arc angle must be greater than 18 degrees.")
-                    _coords, end_smoothing_point, _start_smoothing_point, smooth_arc_points = self.generate_arc_points(
+                    coords, end_smoothing_point, _start_smoothing_point = self.generate_arc_3d(
                         point[0],
                         point[1],
                         point[2],
                         count_points,
+                        distance=point[2].smooth_distance,
                         arc_angle=point[2].circ_angle
                         )
                     
+                    smoothed_coords, _end_smoothing_point, _start_smoothing_point = self.generate_arc_3d(
+                        point[0],
+                        point[1],
+                        point[2],
+                        count_points,
+                        distance=None,
+                        arc_angle=point[2].circ_angle+5
+                        )
+                    
                     # Find smooth distance start LIN point
-                    end_circ_point = XYZPos().from_list(smooth_arc_points[-1].tolist())
+                    end_circ_point = smoothed_coords[-1]
                     start_smoothing_point = self.point_on_trajectory(end_circ_point, point[2].smooth_endPoint, point[2].smooth_distance)
                     
                     # Find middle spline point
-                    A = np.array(end_smoothing_point.export_to(list))
-                    C = np.array(smooth_arc_points[-1].tolist())
+                    A = np.array(coords[-1].export_to(list))
+                    C = np.array(smoothed_coords[-1].export_to(export_type=list))
                     B = np.array(start_smoothing_point.export_to(list))
                     middle_spline_point = XYZPos.from_list(self.bisector_point(A, B, C, point[2].smooth_distance, 0.33).tolist())
-                    
-                    # Create new CIRC trajectory
-                    circles_count = point[2].circ_angle // 360 if point[2].circ_angle is not None else 0
-                    circ_coords, _start_smooth_point, _start_smoothing_point, _smooth_arc_points = self.generate_arc_points(
-                        point[0],
-                        point[1],
-                        end_smoothing_point,
-                        count_points,
-                        circles_count=circles_count
-                        )
                     smoothed_trajectory = Spline(robot_data, system=self).add_point(end_smoothing_point, middle_spline_point, start_smoothing_point, start_smoothing_point)._create_catmull_rom_spline_points()
-                    full_trajectory_points.extend([XYZPos.from_list(cord) for cord in circ_coords])
+                    full_trajectory_points.extend([cord for cord in coords])
                     full_trajectory_points += smoothed_trajectory
                     if point[2].smooth_endPoint.smooth_endPoint is None:
                         full_trajectory_points.append(point[2].smooth_endPoint)
@@ -453,51 +391,60 @@ class TrajectoryConstructor:
                     # Find smooth distance end CIRC point
                     if point[2].circ_angle < 18:
                         raise ValueError("Arc in one angle must be greater than 18 degrees.")
-                    _coords, end_smoothing_point, _start_smoothing_point, _smooth_arc_points = self.generate_arc_points(
+                    circ_coords1, end_smoothing_point, _start_smoothing_point = self.generate_arc_3d(
                         point[0],
                         point[1],
                         point[2],
                         count_points,
+                        distance=point[2].smooth_distance,
                         arc_angle=point[2].circ_angle
                         )
+                    
+                    smoothed_coords1, _end_smoothing_point, _start_smoothing_point = self.generate_arc_3d(
+                        point[0],
+                        point[1],
+                        point[2],
+                        count_points,
+                        distance=None,
+                        arc_angle=point[2].circ_angle+10
+                        )
+                    end_circ_point = smoothed_coords1[-1]
+                    
                     # Find smooth distance start CIRC point
                     new_movement = point[2].smooth_endPoint
                     if new_movement[2].circ_angle < 18:
                         raise ValueError("Arc in two angle must be greater than 18 degrees.")
-                    _coords, _end_smoothing_point, start_smoothing_point, _smooth_arc_points = self.generate_arc_points(
+                    circ_coords2, start_smoothing_point, _end_smoothing_point,  = self.generate_arc_3d(
+                        new_movement[2],
+                        new_movement[1],
                         new_movement[0],
-                        new_movement[1],
-                        new_movement[2],
                         count_points,
-                        distance=point[2].smooth_distance,
+                        distance=new_movement[2].smooth_distance,
                         arc_angle=new_movement[2].circ_angle
                         )
                     
+                    smoothed_coords2, _end_smoothing_point, _start_smoothing_point = self.generate_arc_3d(
+                        new_movement[2],
+                        new_movement[1],
+                        new_movement[0],
+                        count_points,
+                        distance=new_movement[2].smooth_distance,
+                        arc_angle=new_movement[2].circ_angle+10
+                        )
+                    start_circ_point = smoothed_coords2[-1]
+
                     # Find middle spline point
-                    middle_spline_point = self.point_between(new_movement[0], end_smoothing_point, 50)
+                    middle_spline_point = self.point_between(end_circ_point, start_circ_point, 50)   
                     
-                    # Create new 1 CIRC trajectory
-                    circles_count1 = point[2].circ_angle // 360 if point[2].circ_angle is not None else 0
-                    circ_coords1, _end_smoothing_point, _start_smoothing_point, _smooth_arc_points = self.generate_arc_points(
-                        point[0],
-                        point[1],
-                        end_smoothing_point,
-                        count_points,
-                        circles_count=circles_count1
-                        )
-                    full_trajectory_points.extend([XYZPos.from_list(cord) for cord in circ_coords1])
-                    # Create new 2 CIRC trajectory
-                    circles_count2 = new_movement[2].circ_angle // 360 if new_movement[2].circ_angle is not None else 0 # TODO: use circles_count2
-                    circ_coords2, _end_smoothing_point, _start_smoothing_point, _smooth_arc_points = self.generate_arc_points(
-                        start_smoothing_point,
-                        new_movement[1],
-                        new_movement[2],
-                        count_points,
-                        arc_angle=new_movement[2].circ_angle
-                        )
-                    # Create smoothed trajectory
-                    smoothed_trajectory = Spline(robot_data, system=self).add_point(end_smoothing_point, middle_spline_point, start_smoothing_point, start_smoothing_point)._create_catmull_rom_spline_points()
+                    # find rebuildet end_circ_point and start_circ_point
+                    end_circ_point = self.point_between(end_circ_point, middle_spline_point, 15)
+                    start_circ_point = self.point_between(middle_spline_point, start_circ_point, 85)
+                    
+                    # Add to full trajectory 
+                    full_trajectory_points.extend([cord for cord in circ_coords1])
+                    smoothed_trajectory = Spline(robot_data, system=self).add_point(end_smoothing_point, end_circ_point, middle_spline_point, start_circ_point, start_smoothing_point)._create_catmull_rom_spline_points()
                     full_trajectory_points += smoothed_trajectory
-                    full_trajectory_points.extend([XYZPos.from_list(cord) for cord in circ_coords2])
+                    circ_coords2.reverse()
+                    full_trajectory_points.extend([cord for cord in circ_coords2])
 
         return full_trajectory_points
