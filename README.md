@@ -544,4 +544,4 @@ trajectory = system.circ(robot, [p1,p2,p3], 300, arc_angle=3600).trjectory
 
 <h1 id='links'>Ссылки</h1>
 
-- [`URSystem`]()
+- [`URSystem`](https://github.com/MrBrain-YT/URSystem)
