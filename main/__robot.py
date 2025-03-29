@@ -29,7 +29,7 @@ class Robot():
     def get_angles_count(self, robot_data:RobotData) -> int:
         url = f"https://{self._host}:{str(self._port)}/GetRobotAnglesCount"
         data = {
-            "Robot": robot_data.name,
+            "robot": robot_data.name,
             "token": self._token
         }
         response = requests.post(url, verify=True, json=data).json()["data"]
@@ -39,9 +39,9 @@ class Robot():
         if TRAJECTORY_SEND_SWITCH:
             url = f"https://{self._host}:{str(self._port)}/GetRobotEmergency"
             data = {
-                "Robot": robot_data.name,
+                "robot": robot_data.name,
                 "token": self._token,
-                "Code": robot_data.code
+                "code": robot_data.code
             }
             response = requests.post(url, verify=True, json=data).json()["data"]
             return response
@@ -51,16 +51,16 @@ class Robot():
         # Set position
         url = f"https://{self._host}:{str(self._port)}/CurentPosition"
         data = {
-            "Robot": robot_data.name,
+            "robot": robot_data.name,
             "token": self._token,
-            "Code" : robot_data.code
+            "code" : robot_data.code
             }
         if not is_multi_point:
-            data = data | angles.export_to(export_type=dict).get("data")
+            data["angles"] = angles.export_to(export_type=dict)
         else:
             converted_angles = []
             for angle in angles:
-                converted_angles.append(angle.export_to(export_type=dict).get("data"))
+                converted_angles.append(angle.export_to(export_type=dict))
             data["angles_data"] = str(converted_angles)
         if last_point_position is not None:
             self.last_point_position = last_point_position
@@ -71,17 +71,17 @@ class Robot():
         # Set motor speed
         url = f"https://{self._host}:{str(self._port)}/CurentSpeed"
         data = {
-            "Robot": robot_data.name,
+            "robot": robot_data.name,
             "token": self._token,
-            "Code" : robot_data.code
+            "code" : robot_data.code
             }
         if not is_multi_point:
-            data = data | angles_speed.export_to(export_type=dict).get("data")
+            data = data | angles_speed.export_to(export_type=dict)
         else:
             data["angles_data"] = angles_speed
             converted_speeds = []
             for angle_speed in angles_speed:
-                converted_speeds.append(angle_speed.export_to(export_type=dict).get("data"))
+                converted_speeds.append(angle_speed.export_to(export_type=dict))
             data["angles_data"] = str(converted_speeds)
         request_data = requests.post(url, verify=True, json=data)
         return request_data.json(), request_data.status_code
@@ -89,27 +89,15 @@ class Robot():
     def move_xyz(self, robot_data:RobotData, position:XYZPos) -> dict:
         url = f"https://{self._host}:{str(self._port)}/Move_XYZ"
         data = {
-            "Robot": robot_data.name,
+            "robot": robot_data.name,
             "x": position.x,
             "y": position.y,
             "z": position.z,
             "token": self._token,
-            "Code" : robot_data.code
+            "code" : robot_data.code
             }
         response = requests.post(url, verify=True, json=data)
         return ReturnData(responce=response.text, code=response.status_code, trjectory=position)
-
-    def move_angle(self, robot_data:RobotData, angles:AnglePos) -> dict:
-        url = f"https://{self._host}:{str(self._port)}/angle_to_xyz"
-        data = {
-            "Robot": robot_data.name,
-            "token": self._token,
-            "Code" : robot_data.code
-            }
-        angles_count = self.get_angles_count(robot_data)
-        for count in range(angles_count):
-            data[f"J{count+1}"] = angles.angles[f"J{count+1}"]
-        return requests.post(url, verify=True, json=data).json()
 
     def xyz_to_angle(self, robot_data:RobotData, positions:list[XYZPos], is_multi_point:bool=False) -> Union[AnglePos, list[AnglePos]]:
         new_positions = []
@@ -118,9 +106,9 @@ class Robot():
             
         url = f"https://{self._host}:{str(self._port)}/XYZ_to_angle"
         data = {
-            "Robot": robot_data.name,
+            "robot": robot_data.name,
             "token": self._token,
-            "Code" : robot_data.code,
+            "code" : robot_data.code,
             "positions_data": str(new_positions)
             }
         result = requests.post(url, verify=True, json=data).json()["data"]
@@ -132,18 +120,26 @@ class Robot():
                 angles.append(AnglePos().from_dict(res))
             return angles
 
-    def angle_to_xyz(self, robot_data:RobotData, angles:AnglePos) -> dict:
-        ''' TODO: add support MutiPoint angles'''
+    def angle_to_xyz(self, robot_data:RobotData, angles:list[AnglePos], is_multi_point:bool=False) -> dict:
+        new_angles = []
+        for angle_pos in angles:
+            new_angles.append(angle_pos.export_to(export_type=list))
+            
         url = f"https://{self._host}:{str(self._port)}/angle_to_xyz"
         data = {
-            "Robot": robot_data.name,
+            "robot": robot_data.name,
             "token": self._token,
-            "Code" : robot_data.code
+            "code" : robot_data.code,
+            "angles_data": new_angles
             }
-        angles_count = self.get_angles_count(robot_data)
-        for count in range(angles_count):
-            data[f"J{count+1}"] = angles.angles[f"J{count+1}"]
-        return requests.post(url, verify=True, json=data).json()
+        result = requests.post(url, verify=True, json=data).json()["data"]
+        if not is_multi_point:
+            return XYZPos().from_dict(result[0], rewrite=True)
+        else:
+            positions:list[XYZPos] = []
+            for res in result:
+                positions.append(XYZPos().from_dict(res))
+            return positions
     
     @staticmethod
     def calculate_speed(start_angles:AnglePos, end_angles:AnglePos, steps:int) -> list:
@@ -168,9 +164,9 @@ class Robot():
     def ptp(self, robot_data:RobotData, angles:AnglePos, step_count:int=100) -> ReturnData:
         url = f"https://{self._host}:{str(self._port)}/GetCurentPosition"
         data = {
-            "Robot": robot_data.name,
+            "robot": robot_data.name,
             "token": self._token,
-            "Code": robot_data.code
+            "code": robot_data.code
             }
         current_angles = requests.post(url, verify=True, json=data).json()["data"]
         
@@ -191,12 +187,6 @@ class Robot():
                          "Set speed": speed_code}
         return ReturnData(responce=response_data, code=response_codes, trjectory=[])
 
-    
-    def calculate_lin(self, start_angles:AnglePos, target_angles:AnglePos, step_count:int=100) -> list:
-        """Return speed list"""
-        # calk speed lin robot moving
-        speeds = self.calculate_speed(start_angles, target_angles, step_count)
-        return speeds
     
     @staticmethod
     def generate_line_points(start:XYZPos, end:XYZPos, num_points:int):
@@ -230,7 +220,7 @@ class Robot():
             if TRAJECTORY_SEND_SWITCH:
                 url = f"https://{self._host}:{str(self._port)}/GetXYZPosition"
                 data = {
-                    "Robot": robot_data.name,
+                    "robot": robot_data.name,
                     "token": self._token
                     }
                 responce_data = requests.post(url, verify=True, json=data).json()["data"]
@@ -264,7 +254,7 @@ class Robot():
                 if index == 0:
                     url = f"https://{self._host}:{str(self._port)}/GetCurentPosition"
                     data = {
-                        "Robot": robot_data.name,
+                        "robot": robot_data.name,
                         "token": self._token
                         }
                     current_angles = requests.post(url, verify=True, json=data).json()["data"]
@@ -279,7 +269,7 @@ class Robot():
                 else:
                     old_point = arc_points[index-1]
                 
-                speed = self._speed_multiplier(self.calculate_lin(old_point, point, lin_step_count), speed_multiplier)
+                speed = self._speed_multiplier(self.calculate_speed(old_point, point, lin_step_count), speed_multiplier)
                 new_speeds.append(AnglePos().from_list(speed))
             
             position_responce, pos_code = self.set_robot_position(robot_data, arc_points, is_multi_point=True)
@@ -295,8 +285,9 @@ class Robot():
 
     def circ(self, robot_data:RobotData, points_xyz:list[XYZPos], count_points:int, arc_angle:float=None, speed_multiplier:float=1, lin_step_count:int=10) -> ReturnData:
         if not self.check_emergency(robot_data):
-            if arc_angle < 18:
-                raise ValueError("Arc angle must be greater than 18 degrees.")
+            if arc_angle is not None:
+                if arc_angle < 18:
+                    raise ValueError("Arc angle must be greater than 18 degrees.")
             
             if points_xyz[2].smooth_endPoint is None:
                 coords, _start_smooth_point, _start_smoothing_point, _smooth_arc_points = TrajectoryConstructor().generate_arc_points(
@@ -330,7 +321,7 @@ class Robot():
                     if index == 0:
                         url = f"https://{self._host}:{str(self._port)}/GetCurentPosition"
                         data = {
-                            "Robot": robot_data.name,
+                            "robot": robot_data.name,
                             "token": self._token
                             }
                         current_angles = requests.post(url, verify=True, json=data).json()["data"]
@@ -345,7 +336,7 @@ class Robot():
                     else:
                         old_point = arc_points[index-1]
 
-                    speed = self._speed_multiplier(self.calculate_lin(old_point, point, lin_step_count), speed_multiplier)
+                    speed = self._speed_multiplier(self.calculate_speed(old_point, point, lin_step_count), speed_multiplier)
                     new_speeds.append(AnglePos().from_list(speed))
                     
                 position_responce, pos_code = self.set_robot_position(robot_data, arc_points, is_multi_point=True)
@@ -363,45 +354,44 @@ class Robot():
             
 
     def get_log(self, robot_data:RobotData) -> dict:
-        url = f"https://{self._host}:{str(self._port)}/URLog"
+        url = f"https://{self._host}:{str(self._port)}/GetRobotLogs"
         data = {
-            "Robot": robot_data.name,
+            "robot": robot_data.name,
             "token": self._token
             }
         return requests.post(url, verify=True, json=data).json()
 
     def get_last_log(self, robot_data:RobotData) -> dict:
-        url = f"https://{self._host}:{str(self._port)}/URLog"
+        url = f"https://{self._host}:{str(self._port)}/GetRobotLogs"
         data = {
-            "Robot": robot_data.name,
+            "robot": robot_data.name,
             "token": self._token
             }
-        return requests.post(url, verify=True, json=data).json()["data"].split("\n")[-1]
+        return requests.post(url, verify=True, json=data).json()["data"][-1]
     
     def debug(self, robot_data:RobotData, text:str) -> dict:
-        url = f"https://{self._host}:{str(self._port)}/URLogs"
+        url = f"https://{self._host}:{str(self._port)}/AddRobotLog"
         data = {
-            "Robot": robot_data.name,
-            "Type": "DEBUG",
-            "Text": text
+            "robot": robot_data.name,
+            "text": text
             }
         return requests.post(url, verify=True, json=data).json()
     
     def set_program(self, robot_data:RobotData, program:str) -> dict:
         url = f"https://{self._host}:{str(self._port)}/SetProgram"
         data = {
-            "Robot": robot_data.name,
-            "Program": program.encode().hex(),
+            "robot": robot_data.name,
+            "program": program.encode().hex(),
             "token": self._token,
-            "Code" : robot_data.code
+            "code" : robot_data.code
             }
         return requests.post(url, verify=True, json=data).json()
     
     def delete_program(self, robot_data:RobotData) -> dict:
         url = f"https://{self._host}:{str(self._port)}/DeleteProgram"
         data = {
-            "Robot": robot_data.name,
+            "robot": robot_data.name,
             "token": self._token,
-            "Code" : robot_data.code
+            "code" : robot_data.code
             }
         return requests.post(url, verify=True, json=data).json()

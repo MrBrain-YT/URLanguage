@@ -352,8 +352,9 @@ class TrajectoryConstructor:
                 if isinstance(point[2].smooth_endPoint, XYZPos):
                     # CIRC to LIN
                     # Find smooth distance start CIRC point
-                    if point[2].circ_angle < 18:
-                        raise ValueError("Arc angle must be greater than 18 degrees.")
+                    if point[2].circ_angle is not None:
+                        if point[2].circ_angle < 18:
+                            raise ValueError("Arc angle must be greater than 18 degrees.")
                     coords, end_smoothing_point, _start_smoothing_point = self.generate_arc_3d(
                         point[0],
                         point[1],
@@ -369,7 +370,7 @@ class TrajectoryConstructor:
                         point[2],
                         count_points,
                         distance=None,
-                        arc_angle=point[2].circ_angle+5
+                        arc_angle=point[2].circ_angle+5 if point[2].circ_angle is not None else None,
                         )
                     
                     # Find smooth distance start LIN point
@@ -389,8 +390,9 @@ class TrajectoryConstructor:
                 else:
                     # CIRC to CIRC
                     # Find smooth distance end CIRC point
-                    if point[2].circ_angle < 18:
-                        raise ValueError("Arc in one angle must be greater than 18 degrees.")
+                    if point[2].circ_angle is not None:
+                        if point[2].circ_angle < 18:
+                            raise ValueError("Arc in one angle must be greater than 18 degrees.")
                     circ_coords1, end_smoothing_point, _start_smoothing_point = self.generate_arc_3d(
                         point[0],
                         point[1],
@@ -406,14 +408,15 @@ class TrajectoryConstructor:
                         point[2],
                         count_points,
                         distance=None,
-                        arc_angle=point[2].circ_angle+10
+                        arc_angle=point[2].circ_angle+10 if point[2].circ_angle is not None else None,
                         )
                     end_circ_point = smoothed_coords1[-1]
                     
                     # Find smooth distance start CIRC point
                     new_movement = point[2].smooth_endPoint
-                    if new_movement[2].circ_angle < 18:
-                        raise ValueError("Arc in two angle must be greater than 18 degrees.")
+                    if new_movement[2].circ_angle is not None:
+                        if new_movement[2].circ_angle < 18:
+                            raise ValueError("Arc in two angle must be greater than 18 degrees.")
                     circ_coords2, start_smoothing_point, _end_smoothing_point,  = self.generate_arc_3d(
                         new_movement[2],
                         new_movement[1],
@@ -429,7 +432,7 @@ class TrajectoryConstructor:
                         new_movement[0],
                         count_points,
                         distance=new_movement[2].smooth_distance,
-                        arc_angle=new_movement[2].circ_angle+10
+                        arc_angle=new_movement[2].circ_angle+10 if new_movement[2].circ_angle is not None else None,
                         )
                     start_circ_point = smoothed_coords2[-1]
 

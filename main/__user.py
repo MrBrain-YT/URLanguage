@@ -32,10 +32,10 @@ class system(__robot.Robot, __tools.Tools):
     def set_emergency(self, robot_data:RobotData, state:bool) -> dict:
         url = f"https://{self._host}:{self._port}/Emergency"
         data = {
-            "Robot": robot_data.name,
+            "robot": robot_data.name,
             "token": self._token,
-            "State": str(state),
-            "Code" : robot_data.code
+            "state": str(state),
+            "code" : robot_data.code
             }
         resp = requests.post(url, verify=True, json=data).json()
         return resp

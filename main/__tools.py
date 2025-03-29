@@ -1,3 +1,5 @@
+from typing import Any
+
 import requests
 
 class Tools():
@@ -8,19 +10,19 @@ class Tools():
         self.token = token
 
 
-    def get_tool_info(self, name:str) -> dict:
-        url = f"https://{self.host}:{self.port}/URTool"
+    def get_tool_info(self, id:str) -> dict:
+        url = f"https://{self.host}:{self.port}/GetTool"
         data = {
-            "id": name,
-            "type": "",
+            "id": id,
+            "type": "read",
             "token": self.token
             }
         return requests.post(url, verify=True, json=data).json()
     
-    def set_tool_info(self, name:str, config:str) -> dict:
-        url = f"https://{self.host}:{self.port}/URTool"
+    def set_tool_info(self, id:str, config:Any) -> dict:
+        url = f"https://{self.host}:{self.port}/GetTool"
         data = {
-            "id": name,
+            "id": id,
             "type": "write",
             "config": config,
             "token": self.token

@@ -97,10 +97,7 @@ class AnglePos:
                 
     def export_to(self, export_type:Union[list, dict]):
         if isinstance(export_type, dict) or export_type is dict:
-            return {
-                'type': export_type['type'],
-                'data': self.angles
-            }
+            return self.angles
         elif isinstance(export_type, list) or export_type is list:
             return list(self.angles.values())
         else:
@@ -191,20 +188,6 @@ class Spline:
         for point in new_points:
             points.append(XYZPos().from_list([point[0], point[1], point[2]]))
         return points
-
-    def _create_linear_spline_points(self) -> list[XYZPos]:
-        """ Преобразует точки в линейный сплайн """
-        if len(self.points) < 2:
-            raise ValueError("Для линейного сплайна требуется минимум 2 точки.")
-
-        # Преобразуем точки в массив NumPy
-        converted_points = np.array([point.export_to(export_type=list) for point in self.points])
-
-        # Генерируем линейный сплайн
-        new_points = self.linear_spline(converted_points)
-
-        # Конвертируем обратно в список XYZPos
-        return [XYZPos().from_list(point) for point in new_points]
             
     def start_move(self) -> "ReturnData":
         full_trajectory_points = self._create_scypy_spline_points()
