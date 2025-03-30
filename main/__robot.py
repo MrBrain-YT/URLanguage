@@ -76,7 +76,7 @@ class Robot():
             "code" : robot_data.code
             }
         if not is_multi_point:
-            data = data | angles_speed.export_to(export_type=dict)
+            data["angles"] = angles_speed.export_to(export_type=dict)
         else:
             data["angles_data"] = angles_speed
             converted_speeds = []
@@ -99,17 +99,20 @@ class Robot():
         response = requests.post(url, verify=True, json=data)
         return ReturnData(responce=response.text, code=response.status_code, trjectory=position)
 
-    def xyz_to_angle(self, robot_data:RobotData, positions:list[XYZPos], is_multi_point:bool=False) -> Union[AnglePos, list[AnglePos]]:
+    def xyz_to_angle(self, robot_data:RobotData, positions:Union[XYZPos, list[XYZPos]], is_multi_point:bool=False) -> Union[AnglePos, list[AnglePos]]:
         new_positions = []
-        for pos in positions:
-            new_positions.append(pos.export_to(export_type=list))
+        if isinstance(positions, list):
+            for pos in positions:
+                new_positions.append(pos.export_to(export_type=list))
+        else:
+            new_positions.append(positions.export_to(export_type=list))
             
         url = f"https://{self._host}:{str(self._port)}/XYZ_to_angle"
         data = {
             "robot": robot_data.name,
             "token": self._token,
             "code" : robot_data.code,
-            "positions_data": str(new_positions)
+            "positions_data": new_positions
             }
         result = requests.post(url, verify=True, json=data).json()["data"]
         if not is_multi_point:
@@ -290,16 +293,14 @@ class Robot():
                     raise ValueError("Arc angle must be greater than 18 degrees.")
             
             if points_xyz[2].smooth_endPoint is None:
-                coords, _start_smooth_point, _start_smoothing_point, _smooth_arc_points = TrajectoryConstructor().generate_arc_points(
+                coords, _start_smooth_point, _start_smoothing_point = TrajectoryConstructor().generate_arc_3d(
                     points_xyz[0],
                     points_xyz[1],
                     points_xyz[2],
                     count_points,
                     arc_angle=arc_angle
                     )
-                full_trajectory_points = []
-                for point in coords:
-                    full_trajectory_points.append(XYZPos(x=point[0], y=point[1], z=point[2]))
+                full_trajectory_points = coords
             else:
                 points_xyz[2].circ_angle = arc_angle
                 # Find smoothing points
