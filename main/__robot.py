@@ -192,30 +192,42 @@ class Robot():
 
     
     @staticmethod
-    def generate_line_points(start:XYZPos, end:XYZPos, num_points:int):
+    def generate_line_points(start: XYZPos, end: XYZPos, num_points: int):
         """
-        Generates a list of points located on a line between two given points.
+        Generates a list of points located on a line between two given points,
+        including smooth transition for position (x, y, z) and orientation (a, b, c).
 
-        :param start: Start point coordinates [x1, y1, z1]
-        :param end: End point coordinates [x1, y1, z1]
-        :param num_points: Count points
-        :return: points_list [[x1, y1, z1], [x2, y2, z2], ...]
+        :param start: Start point with coordinates and orientation [x, y, z, a, b, c]
+        :param end: End point with coordinates and orientation [x, y, z, a, b, c]
+        :param num_points: Number of points to generate (must be >= 2)
+        :return: List of XYZPos instances with interpolated positions and orientations
         """
         if num_points < 2:
             raise ValueError("The number of points must be at least 2.")
 
-        x1, y1, z1 = start.export_to(list)
-        x2, y2, z2 = end.export_to(list)
+        # Получаем значения из start и end
+        x1, y1, z1, a1, b1, c1 = start.export_to(list)
+        x2, y2, z2, a2, b2, c2 = end.export_to(list)
 
-        # Вычисляем шаги для x, y и z
+        # Вычисляем шаги для координат и ориентации
         x_step = (x2 - x1) / (num_points - 1)
         y_step = (y2 - y1) / (num_points - 1)
         z_step = (z2 - z1) / (num_points - 1)
+        a_step = (a2 - a1) / (num_points - 1)
+        b_step = (b2 - b1) / (num_points - 1)
+        c_step = (c2 - c1) / (num_points - 1)
 
-        # Генерируем список точек
+        # Генерируем точки
         points = []
         for i in range(num_points):
-            points.append(XYZPos().from_list([x1 + i * x_step, y1 + i * y_step, z1 + i * z_step]))
+            x = x1 + i * x_step
+            y = y1 + i * y_step
+            z = z1 + i * z_step
+            a = a1 + i * a_step
+            b = b1 + i * b_step
+            c = c1 + i * c_step
+            point = XYZPos().from_list([x, y, z, a, b, c])
+            points.append(point)
         return points
     
     def lin(self, robot_data:RobotData, end_point:XYZPos, num_points:int=25, lin_step_count:int=25, speed_multiplier:int=1, start:XYZPos=None) -> ReturnData:

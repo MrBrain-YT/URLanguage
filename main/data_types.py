@@ -18,12 +18,15 @@ class XYZPos:
         self.x = kwargs.get('x')
         self.y = kwargs.get('y')
         self.z = kwargs.get('z')
+        self.a = kwargs.get('a') if kwargs.get('a') is not None else 0
+        self.b = kwargs.get('b') if kwargs.get('b') is not None else 0
+        self.c = kwargs.get('c') if kwargs.get('c') is not None else 0
         self.smooth_distance = smooth_distance
         self.smooth_endPoint = smooth_endPoint
         self.circ_angle = circ_angle
         
     def __str__(self):
-        return f"XYZPos: {[self.x, self.y, self.z]}"
+        return f"XYZPos: {[self.x, self.y, self.z, self.a, self.b, self.c]}"
     
     def __eq__(self, value:"XYZPos"):
         return self.x == value.x and self.y == value.y and self.z == value.z
@@ -33,30 +36,39 @@ class XYZPos:
         new_x = data['x']
         new_y = data['y']
         new_z = data['z']
-        return cls(x=new_x, y=new_y, z=new_z)
+        if (isinstance(data['a'], (int, float)) and isinstance(data['b'], (int, float)) and isinstance(data['c'], (int, float))):
+            new_a = data['a']
+            new_b = data['b']
+            new_c = data['c']
+            return cls(x=new_x, y=new_y, z=new_z, a=new_a, b=new_b, c=new_c)
+        else:
+            return cls(x=new_x, y=new_y, z=new_z, a=0, b=0, c=0)
     
     @classmethod
     def from_list(cls, data:list):
-        if len(data) == 3:
-            new_x = data[0]
-            new_y = data[1]
-            new_z = data[2]
-            return cls(x=new_x, y=new_y, z=new_z)
+        new_x = data[0]
+        new_y = data[1]
+        new_z = data[2]
+        if len(data) > 3:
+            new_a = data[3]
+            new_b = data[4]
+            new_c = data[5]
+            return cls(x=new_x, y=new_y, z=new_z, a=new_a, b=new_b, c=new_c)
         else:
-            raise ValueError('List must contain exactly 3 elements')
+            return cls(x=new_x, y=new_y, z=new_z, a=0, b=0, c=0)
         
     def export_to(self, export_type:Union[list, dict]):
         if isinstance(export_type, dict) or export_type is dict:
-            return {
-                'type': export_type['type'],
-                'data': {
+                return {
                     'x': self.x,
                     'y': self.y,
-                    'z': self.z
+                    'z': self.z,
+                    'a': self.a,
+                    'b': self.b,
+                    'c': self.c,
                 }
-            }
         elif isinstance(export_type, list) or export_type is list:
-            return [self.x, self.y, self.z]
+            return [self.x, self.y, self.z, self.a, self.b, self.c]
         else:
             raise ValueError('Export type must be a list or dictionary')  
         

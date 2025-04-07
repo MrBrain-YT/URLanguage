@@ -4,10 +4,10 @@ from data_types import AnglePos, RobotData, XYZPos, Spline
 from utils.vizualizer import Vizualization
 import __robot
 
-# __robot.TRAJECTORY_SEND_SWITCH = False
+__robot.TRAJECTORY_SEND_SWITCH = False
 
-system = auth.Auth("localhost", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a")\
-    .super_admin("SuperAdmin", "12345").system("localhost", 5000) #, symulate=True
+system = auth.Auth("localhost", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a", symulate=True)\
+    .super_admin("SuperAdmin", "12345").system("localhost", 5000) #
     
 robot = RobotData("First", "654123")
 
@@ -126,6 +126,22 @@ robot = RobotData("First", "654123")
 " show all trajectory"
 # Vizualization(trajectory=trajectory1+trajectory2).show_mathplotlib_trajectory_plot()
 
+""" ABC Visualize test """
+p_start = XYZPos().from_list([200, 200, 100, 90, 0, 0])
+p1 = XYZPos().from_list([100, 100, 67.117, 90, 0, 90])
+p2 = XYZPos().from_list([200, 0, 67.117, 90, 0, 0])
+p3 = XYZPos().from_list([100, -100, 35, 0, 0, 0])
+p4 = XYZPos().from_list([150, -100, 0, 0, 0, 0])
+p2.smooth_endPoint = p3
+p2.smooth_distance = 50
+trajectory = system.lin(robot, p1, 20, speed_multiplier=1, start=p_start).trjectory
+trajectory2 = system.lin(robot, p2, 20, speed_multiplier=1, start=trajectory[-1]).trjectory
+trajectory3 = system.lin(robot, p4, 20, speed_multiplier=1, start=trajectory2[-1]).trjectory
+trajectory_full = trajectory + trajectory2 + trajectory3
+Vizualization(trajectory=trajectory_full).show_mathplotlib_trajectory_plot()
+# Vizualization(system.lin(robot, p2, num_points=25 ,start=XYZPos().from_list([100, 0, 67.117])).trjectory).show_mathplotlib_trajectory_plot()
+
+
 """ PTP test """
 # system.ptp(robot, AnglePos().from_list([100,140,-40,10]))
 
@@ -137,13 +153,13 @@ robot = RobotData("First", "654123")
 
 """ Drawing cube """
 # p1 = system.xyz_to_angle(robot, XYZPos().from_list([100, 0, 67.117])) # рисуем квадрат
-# p2 = system.xyz_to_angle(robot, XYZPos().from_list([200, 0, 67.117]))
+# p2 = XYZPos().from_list([200, 0, 67.117, 90, 0, 0])
 # p3 = XYZPos().from_list([200, 100, 67.117])
 # p4 = XYZPos().from_list([100, 100, 67.117])
 # p5 = XYZPos().from_list([100, 0, 67.117])
 # system.ptp(robot, p1)
-# system.ptp(robot, p2)
-# system.lin(robot, p3, start=XYZPos().from_list([100, 0, 67.117]))
+# system.lin(robot, p2, start=XYZPos().from_list([100, 0, 67.117]))
+# system.lin(robot, p3, start=p2)
 # system.lin(robot, p4, start=p3)
 # system.lin(robot, p5, start=p4)
 
