@@ -47,6 +47,7 @@
   </li>
   <li><a href='#help'>Помощь в разработке</a></li>
   <li><a href='#links'>Ссылки</a></li>
+  <li><a href='./doc/changes.md'>Последние изменения</a></li>
 </ul>
 
 <h2 id='overview'>Обзор</h2>

@@ -1,6 +1,7 @@
 from typing import Union, TYPE_CHECKING
 
 import requests
+import pprint
 
 from data_types import RobotData, AnglePos, XYZPos, ReturnData
 from utils.trajectory_creator import TrajectoryConstructor
@@ -93,6 +94,9 @@ class Robot():
             "x": position.x,
             "y": position.y,
             "z": position.z,
+            "a": position.a,
+            "b": position.b,
+            "c": position.c,
             "token": self._token,
             "code" : robot_data.code
             }
@@ -148,6 +152,8 @@ class Robot():
     def calculate_speed(start_angles:AnglePos, end_angles:AnglePos, steps:int) -> list:
         start_angles = start_angles.export_to(list)
         end_angles = end_angles.export_to(list)
+        # pprint.pprint(start_angles)
+        # pprint.pprint(end_angles)
         # Проверка на совпадение размеров списков
         if len(start_angles) != len(end_angles):
             raise ValueError("Списки начальных и конечных углов должны иметь одинаковую длину")
@@ -191,45 +197,6 @@ class Robot():
         return ReturnData(responce=response_data, code=response_codes, trjectory=[])
 
     
-    @staticmethod
-    def generate_line_points(start: XYZPos, end: XYZPos, num_points: int):
-        """
-        Generates a list of points located on a line between two given points,
-        including smooth transition for position (x, y, z) and orientation (a, b, c).
-
-        :param start: Start point with coordinates and orientation [x, y, z, a, b, c]
-        :param end: End point with coordinates and orientation [x, y, z, a, b, c]
-        :param num_points: Number of points to generate (must be >= 2)
-        :return: List of XYZPos instances with interpolated positions and orientations
-        """
-        if num_points < 2:
-            raise ValueError("The number of points must be at least 2.")
-
-        # Получаем значения из start и end
-        x1, y1, z1, a1, b1, c1 = start.export_to(list)
-        x2, y2, z2, a2, b2, c2 = end.export_to(list)
-
-        # Вычисляем шаги для координат и ориентации
-        x_step = (x2 - x1) / (num_points - 1)
-        y_step = (y2 - y1) / (num_points - 1)
-        z_step = (z2 - z1) / (num_points - 1)
-        a_step = (a2 - a1) / (num_points - 1)
-        b_step = (b2 - b1) / (num_points - 1)
-        c_step = (c2 - c1) / (num_points - 1)
-
-        # Генерируем точки
-        points = []
-        for i in range(num_points):
-            x = x1 + i * x_step
-            y = y1 + i * y_step
-            z = z1 + i * z_step
-            a = a1 + i * a_step
-            b = b1 + i * b_step
-            c = c1 + i * c_step
-            point = XYZPos().from_list([x, y, z, a, b, c])
-            points.append(point)
-        return points
-    
     def lin(self, robot_data:RobotData, end_point:XYZPos, num_points:int=25, lin_step_count:int=25, speed_multiplier:int=1, start:XYZPos=None) -> ReturnData:
         if start is None:
             if TRAJECTORY_SEND_SWITCH:
@@ -248,7 +215,7 @@ class Robot():
         
         arc_points = []
         if end_point.smooth_endPoint is None:
-            full_trajectory_points = self.generate_line_points(start, end_point, num_points)
+            full_trajectory_points = TrajectoryConstructor().generate_line_points(start, end_point, num_points)
         else:
             cartesian_points = []
             updating_end_point = end_point
@@ -351,7 +318,7 @@ class Robot():
 
                     speed = self._speed_multiplier(self.calculate_speed(old_point, point, lin_step_count), speed_multiplier)
                     new_speeds.append(AnglePos().from_list(speed))
-                    
+                print(new_speeds[1])
                 position_responce, pos_code = self.set_robot_position(robot_data, arc_points, is_multi_point=True)
                 speed_responce, speed_code = self.set_robot_speed(robot_data, new_speeds, is_multi_point=True)
                 

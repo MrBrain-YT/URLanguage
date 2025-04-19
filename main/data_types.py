@@ -15,15 +15,15 @@ if TYPE_CHECKING:
 class XYZPos:
     
     def __init__(self, smooth_distance:float=5, smooth_endPoint:Union['XYZPos', list['XYZPos'],None]=None, circ_angle:Union[float, None]=None, **kwargs):
-        self.x = kwargs.get('x')
-        self.y = kwargs.get('y')
-        self.z = kwargs.get('z')
-        self.a = kwargs.get('a') if kwargs.get('a') is not None else 0
-        self.b = kwargs.get('b') if kwargs.get('b') is not None else 0
-        self.c = kwargs.get('c') if kwargs.get('c') is not None else 0
-        self.smooth_distance = smooth_distance
-        self.smooth_endPoint = smooth_endPoint
-        self.circ_angle = circ_angle
+        self.x:float = kwargs.get('x')
+        self.y:float = kwargs.get('y')
+        self.z:float = kwargs.get('z')
+        self.a:float = kwargs.get('a') if kwargs.get('a') is not None else 0
+        self.b:float = kwargs.get('b') if kwargs.get('b') is not None else 0
+        self.c:float = kwargs.get('c') if kwargs.get('c') is not None else 0
+        self.smooth_distance:float = smooth_distance
+        self.smooth_endPoint:XYZPos = smooth_endPoint
+        self.circ_angle:float = circ_angle
         
     def __str__(self):
         return f"XYZPos: {[self.x, self.y, self.z, self.a, self.b, self.c]}"
@@ -40,7 +40,7 @@ class XYZPos:
             new_a = data['a']
             new_b = data['b']
             new_c = data['c']
-            return cls(x=new_x, y=new_y, z=new_z, a=new_a, b=new_b, c=new_c)
+            return cls(x=new_x, y=new_y, z=new_z, a=new_c, b=new_b, c=new_a)
         else:
             return cls(x=new_x, y=new_y, z=new_z, a=0, b=0, c=0)
     
@@ -53,7 +53,7 @@ class XYZPos:
             new_a = data[3]
             new_b = data[4]
             new_c = data[5]
-            return cls(x=new_x, y=new_y, z=new_z, a=new_a, b=new_b, c=new_c)
+            return cls(x=new_x, y=new_y, z=new_z, a=new_c, b=new_b, c=new_a)
         else:
             return cls(x=new_x, y=new_y, z=new_z, a=0, b=0, c=0)
         
@@ -63,12 +63,12 @@ class XYZPos:
                     'x': self.x,
                     'y': self.y,
                     'z': self.z,
-                    'a': self.a,
+                    'a': self.c,
                     'b': self.b,
-                    'c': self.c,
+                    'c': self.a,
                 }
         elif isinstance(export_type, list) or export_type is list:
-            return [self.x, self.y, self.z, self.a, self.b, self.c]
+            return [self.x, self.y, self.z, self.c, self.b, self.a]
         else:
             raise ValueError('Export type must be a list or dictionary')  
         
@@ -89,7 +89,7 @@ class AnglePos:
         return self.export_to(list)[index]
                 
     def __str__(self):
-        return self.angles
+        return str(self.angles)
         
     def from_dict(self, data:dict, rewrite:bool=False):
         if rewrite:
@@ -171,35 +171,37 @@ class Spline:
         return [XYZPos().from_list(point) for point in new_points]
 
     def _create_scypy_spline_points(self) -> list[XYZPos]:
-        # Преобразование точек в массив numpy
-        converted_points = []
-        for point in self.points:
-            converted_points.append(point.export_to(export_type=list))
+        # Преобразуем все точки в numpy-массив
+        converted_points = [point.export_to(export_type=list) for point in self.points]
         points = np.array(converted_points)
+        # Разделяем координаты и углы
         x, y, z = points[:, 0], points[:, 1], points[:, 2]
-
-        # Создание параметра t (равномерное распределение)
+        a, b, c = points[:, 3], points[:, 4], points[:, 5]
+        # Создаем параметр t для интерполяции (равномерное распределение)
         t = np.linspace(0, 1, len(points))
-
-        # Создание кубических сплайнов для x(t), y(t), z(t)
+        
+        # Интерполяция кубическими сплайнами по каждой координате и углу
         cs_x = CubicSpline(t, x)
         cs_y = CubicSpline(t, y)
         cs_z = CubicSpline(t, z)
-
-        # Генерация новых точек с равномерным шагом
+        cs_a = CubicSpline(t, a)
+        cs_b = CubicSpline(t, b)
+        cs_c = CubicSpline(t, c)
+        # Новый параметр t с нужным количеством точек
         t_fine = np.linspace(0, 1, self.num_points)
+        # Вычисляем новые значения по сплайнам
         x_new = cs_x(t_fine)
         y_new = cs_y(t_fine)
         z_new = cs_z(t_fine)
+        a_new = cs_a(t_fine)
+        b_new = cs_b(t_fine)
+        c_new = cs_c(t_fine)
+        # Формируем новые точки
+        new_points = np.array([x_new, y_new, z_new, a_new, b_new, c_new]).T
+        # Преобразуем массив в список объектов XYZPos
+        result_points = [XYZPos().from_list(p.tolist()) for p in new_points]
 
-        # Формирование массива новых точек
-        new_points = np.array([x_new, y_new, z_new]).T
-
-        # Преобразование новых точек в объекты XYZPos
-        points = []
-        for point in new_points:
-            points.append(XYZPos().from_list([point[0], point[1], point[2]]))
-        return points
+        return result_points
             
     def start_move(self) -> "ReturnData":
         full_trajectory_points = self._create_scypy_spline_points()
@@ -211,10 +213,10 @@ class Spline:
             if index == 0:
                 url = f"https://{self.system._host}:{str(self.system._port)}/GetCurentPosition"
                 data = {
-                    "Robot": self.robot_data.name,
+                    "robot": self.robot_data.name,
                     "token": self.system._token
                     }
-                current_angles = requests.post(url, verify=True, data=data).json()
+                current_angles = requests.post(url, verify=True, json=data).json()["data"]
                 
                 if isinstance(current_angles, list):
                     old_point = AnglePos().from_dict(current_angles[-1])
@@ -225,17 +227,16 @@ class Spline:
                 
             else:
                 old_point = arc_points[index-1]
-            
-            speed = self.system._speed_multiplier(self.system.calculate_lin(old_point, point, self.lin_step_count), self.speed_multiplier)
+            speed = self.system._speed_multiplier(self.system.calculate_speed(old_point, point, self.lin_step_count), self.speed_multiplier)
             new_speeds.append(AnglePos().from_list(speed))
             
         position_responce = self.system.set_robot_position(self.robot_data, arc_points, is_multi_point=True, last_point_position=self.points[-1])
         speed_responce = self.system.set_robot_speed(self.robot_data, new_speeds, is_multi_point=True)
         
-        response_data = {"Set position": position_responce.text,
-                         "Set speed": speed_responce.text}
-        response_codes = {"Set position": position_responce.status_code,
-                         "Set speed": speed_responce.status_code}
+        response_data = {"Set position": position_responce[0],
+                         "Set speed": speed_responce[0]}
+        response_codes = {"Set position": position_responce[1],
+                         "Set speed": speed_responce[1]}
         return ReturnData(responce=response_data, code=response_codes, trjectory=full_trajectory_points)
 
 @dataclass
