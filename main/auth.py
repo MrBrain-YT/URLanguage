@@ -15,7 +15,7 @@ import __super_admin as SuperAdmin
 
 class Auth():
     def __init__(self, ip:str, port:int, server_token:str, symulate:bool=False) -> None:
-        ''' Symulate is parametr use symulating autentification '''
+        ''' Symulate is parameter use symulating autentification '''
         self.ip = ip
         self.port = port
         self.server_token = server_token

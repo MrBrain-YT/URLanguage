@@ -1,7 +1,7 @@
 from typing import Union, TYPE_CHECKING
 
 import requests
-import pprint
+import asyncio
 
 from data_types import RobotData, AnglePos, XYZPos, ReturnData
 from utils.trajectory_creator import TrajectoryConstructor
@@ -162,11 +162,12 @@ class Robot():
         # Цикл по элементам списков углов
         for i in range(len(start_angles)):
             # Вычисление разницы между начальным и конечным углом для каждого сервомотора
-            angle_diff = end_angles[i] - start_angles[i]
-            # Вычисление скорости вращения для каждого сервомотора
-            speed = angle_diff / steps  # steps - количество шагов
-            # Добавление скорости вращения в список
-            speeds.append(abs(speed))
+            if isinstance(end_angles[i], (float, int)):
+                angle_diff = end_angles[i] - start_angles[i]
+                # Вычисление скорости вращения для каждого сервомотора
+                speed = angle_diff / steps  # steps - количество шагов
+                # Добавление скорости вращения в список
+                speeds.append(abs(speed))
         
         return speeds
 
@@ -197,7 +198,7 @@ class Robot():
         return ReturnData(responce=response_data, code=response_codes, trjectory=[])
 
     
-    def lin(self, robot_data:RobotData, end_point:XYZPos, num_points:int=25, lin_step_count:int=25, speed_multiplier:int=1, start:XYZPos=None) -> ReturnData:
+    async def lin(self, robot_data:RobotData, end_point:XYZPos, num_points:int=25, triggers:dict=None, speed_multiplier:int=1, start:XYZPos=None, lin_step_count:int=25) -> ReturnData:
         if start is None:
             if TRAJECTORY_SEND_SWITCH:
                 url = f"https://{self._host}:{str(self._port)}/GetXYZPosition"
@@ -216,6 +217,7 @@ class Robot():
         arc_points = []
         if end_point.smooth_endPoint is None:
             full_trajectory_points = TrajectoryConstructor().generate_line_points(start, end_point, num_points)
+            
         else:
             cartesian_points = []
             updating_end_point = end_point
@@ -226,10 +228,20 @@ class Robot():
             full_trajectory_points = [start]
             full_trajectory_points = TrajectoryConstructor().smooth_trajectory(robot_data, full_trajectory_points, cartesian_points, updating_start_point, lin_step_count)
             
+        # Setting triggers in trajectory
+        if triggers is not None:
+            for trigger_id in triggers.keys():
+                full_trajectory_points = TrajectoryConstructor().set_trigger_point_in_trajectory(full_trajectory_points, \
+                    triggers[trigger_id], trigger_id)[2]
+
         self.last_point_position = full_trajectory_points[-1]
             
         if TRAJECTORY_SEND_SWITCH:
             arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
+            # Set send parameter from xyz point to angle point
+            for index, point in enumerate(full_trajectory_points):
+                arc_points[index]["send"] = point.send
+            
             new_speeds:list = []
             for index, point in enumerate(arc_points):
                 old_point:AnglePos = None
@@ -240,17 +252,13 @@ class Robot():
                         "token": self._token
                         }
                     current_angles = requests.post(url, verify=True, json=data).json()["data"]
-                    
                     if isinstance(current_angles, list):
                         old_point = AnglePos().from_dict(current_angles[-1])
                     else:
                         old_point = AnglePos().from_dict(current_angles)
-
-                    old_point = AnglePos().from_list(old_point)
-                    
                 else:
                     old_point = arc_points[index-1]
-                
+
                 speed = self._speed_multiplier(self.calculate_speed(old_point, point, lin_step_count), speed_multiplier)
                 new_speeds.append(AnglePos().from_list(speed))
             
@@ -265,7 +273,7 @@ class Robot():
         else:
             return ReturnData(responce=None, code=None, trjectory=full_trajectory_points)
 
-    def circ(self, robot_data:RobotData, points_xyz:list[XYZPos], count_points:int, arc_angle:float=None, speed_multiplier:float=1, lin_step_count:int=10) -> ReturnData:
+    def circ(self, robot_data:RobotData, points_xyz:list[XYZPos], count_points:int=50, triggers:dict=None, arc_angle:float=None, speed_multiplier:float=1, lin_step_count:int=10) -> ReturnData:
         if not self.check_emergency(robot_data):
             if arc_angle is not None:
                 if arc_angle < 18:
@@ -291,10 +299,20 @@ class Robot():
                 full_trajectory_points = [points_xyz[0]]
                 full_trajectory_points = TrajectoryConstructor().smooth_trajectory(robot_data, full_trajectory_points, cartesian_points, updating_start_point, count_points)
               
+            # Setting triggers in trajectory
+            if triggers is not None:
+                for trigger_id in triggers.keys():
+                    full_trajectory_points = TrajectoryConstructor().set_trigger_point_in_trajectory(full_trajectory_points, \
+                        triggers[trigger_id], trigger_id)[2]
+              
             self.last_point_position = full_trajectory_points[-1]
             
             if TRAJECTORY_SEND_SWITCH:            
                 arc_points = self.xyz_to_angle(robot_data, full_trajectory_points, is_multi_point=True)
+                # Set send parameter from xyz point to angle point
+                for index, point in enumerate(full_trajectory_points):
+                    arc_points[index]["send"] = point.send
+                    
                 new_speeds:list = []
                 for index, point in enumerate(arc_points):
                     old_point:list = []
@@ -310,15 +328,12 @@ class Robot():
                             old_point = AnglePos().from_dict(current_angles[-1])
                         else:
                             old_point = AnglePos().from_dict(current_angles)
-
-                        old_point = AnglePos().from_list(old_point)
-                        
                     else:
                         old_point = arc_points[index-1]
 
                     speed = self._speed_multiplier(self.calculate_speed(old_point, point, lin_step_count), speed_multiplier)
                     new_speeds.append(AnglePos().from_list(speed))
-                print(new_speeds[1])
+                    
                 position_responce, pos_code = self.set_robot_position(robot_data, arc_points, is_multi_point=True)
                 speed_responce, speed_code = self.set_robot_speed(robot_data, new_speeds, is_multi_point=True)
                 
@@ -373,5 +388,23 @@ class Robot():
             "robot": robot_data.name,
             "token": self._token,
             "code" : robot_data.code
+            }
+        return requests.post(url, verify=True, json=data).json()
+    
+    def get_position_id(self, robot_data:RobotData) -> dict:
+        url = f"https://{self._host}:{str(self._port)}/GetPositionID"
+        data = {
+            "robot": robot_data.name,
+            "token": self._token
+            }
+        return requests.post(url, verify=True, json=data).json()
+    
+    def set_position_id(self, robot_data:RobotData, position_id: int) -> dict:
+        url = f"https://{self._host}:{str(self._port)}/SetPositionID"
+        data = {
+            "robot": robot_data.name,
+            "token": self._token,
+            "code" : robot_data.code,
+            "id" : position_id 
             }
         return requests.post(url, verify=True, json=data).json()
