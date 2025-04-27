@@ -77,9 +77,10 @@ class XYZPos:
         
 class AnglePos:
     
-    def __init__(self, send:str=None, *args):
+    def __init__(self, send:str=None, use_send:bool=True, *args):
         self.angles = {}
-        self.angles["send"] = "" if send is None else send
+        if use_send:
+            self.angles["send"] = "" if send is None else send
         for index, arg in enumerate(args):
             if not isinstance(arg, (int, float)):
                 raise TypeError('All arguments must be numbers')
@@ -253,7 +254,7 @@ class Spline:
             else:
                 old_point = arc_points[index-1]
             speed = self.system._speed_multiplier(self.system.calculate_speed(old_point, point, self.lin_step_count), self.speed_multiplier)
-            new_speeds.append(AnglePos().from_list(speed))
+            new_speeds.append(AnglePos(use_send=False).from_list(speed))
             
         position_responce = self.system.set_robot_position(self.robot_data, arc_points, is_multi_point=True, last_point_position=self.points[-1])
         speed_responce = self.system.set_robot_speed(self.robot_data, new_speeds, is_multi_point=True)

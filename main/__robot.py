@@ -1,15 +1,9 @@
 from typing import Union, TYPE_CHECKING
 
 import requests
-import asyncio
 
 from data_types import RobotData, AnglePos, XYZPos, ReturnData
 from utils.trajectory_creator import TrajectoryConstructor
-
-if TYPE_CHECKING:
-    import __super_admin as super_admin
-    import __admin as admin
-    import __user as user
     
 # Trajectory sending variable (work in lin and circ functions)
 TRAJECTORY_SEND_SWITCH = True # True - send data, false - don't send data
@@ -168,7 +162,6 @@ class Robot():
                 speed = angle_diff / steps  # steps - количество шагов
                 # Добавление скорости вращения в список
                 speeds.append(abs(speed))
-        
         return speeds
 
     def ptp(self, robot_data:RobotData, angles:AnglePos, step_count:int=100) -> ReturnData:
@@ -198,7 +191,7 @@ class Robot():
         return ReturnData(responce=response_data, code=response_codes, trjectory=[])
 
     
-    async def lin(self, robot_data:RobotData, end_point:XYZPos, num_points:int=25, triggers:dict=None, speed_multiplier:int=1, start:XYZPos=None, lin_step_count:int=25) -> ReturnData:
+    def lin(self, robot_data:RobotData, end_point:XYZPos, num_points:int=25, triggers:dict=None, speed_multiplier:int=1, start:XYZPos=None, lin_step_count:int=25) -> ReturnData:
         if start is None:
             if TRAJECTORY_SEND_SWITCH:
                 url = f"https://{self._host}:{str(self._port)}/GetXYZPosition"
@@ -260,7 +253,7 @@ class Robot():
                     old_point = arc_points[index-1]
 
                 speed = self._speed_multiplier(self.calculate_speed(old_point, point, lin_step_count), speed_multiplier)
-                new_speeds.append(AnglePos().from_list(speed))
+                new_speeds.append(AnglePos(use_send=False).from_list(speed))
             
             position_responce, pos_code = self.set_robot_position(robot_data, arc_points, is_multi_point=True)
             speed_responce, speed_code = self.set_robot_speed(robot_data, new_speeds, is_multi_point=True)
@@ -332,7 +325,7 @@ class Robot():
                         old_point = arc_points[index-1]
 
                     speed = self._speed_multiplier(self.calculate_speed(old_point, point, lin_step_count), speed_multiplier)
-                    new_speeds.append(AnglePos().from_list(speed))
+                    new_speeds.append(AnglePos(use_send=False).from_list(speed))
                     
                 position_responce, pos_code = self.set_robot_position(robot_data, arc_points, is_multi_point=True)
                 speed_responce, speed_code = self.set_robot_speed(robot_data, new_speeds, is_multi_point=True)

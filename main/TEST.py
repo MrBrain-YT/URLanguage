@@ -1,8 +1,7 @@
-import asyncio
-
 import auth
 from data_types import AnglePos, RobotData, XYZPos, Spline
 from utils.vizualizer import Vizualization
+from utils.triggers import TriggerHandler
 import __robot
 
 # __robot.TRAJECTORY_SEND_SWITCH = False
@@ -186,54 +185,47 @@ robot = RobotData("First", "654123")
 # robot.lin([200,60,30,20])
 # robot.lin([0,-100,-20,100])
 
-""" asincio test """
+""" Triggers test """
+" LIN "
+# def hello_trigger_handler():
+#     print("Hello")
 
-async def main():
-    p_start = XYZPos().from_list([200, 200, 100])
-    p1 = XYZPos().from_list([100, 100, 67.117])
-    p2 = XYZPos().from_list([200, 0, 67.117])
-    p3 = XYZPos().from_list([100, -100, 35])
-    p4 = XYZPos().from_list([150, -100, 0])
+# TH = TriggerHandler(robot_data=robot, system=system)
+# TH.add_trigger("hello", hello_trigger_handler)
 
-    p2.smooth_endPoint = p3
-    p2.smooth_distance = 50
+# p_start = XYZPos().from_list([200, 200, 100])
+# p1 = XYZPos().from_list([100, 100, 67.117])
+# p2 = XYZPos().from_list([200, 0, 67.117])
+# p3 = XYZPos().from_list([100, -100, 35])
+# p4 = XYZPos().from_list([150, -100, 0])
+# p2.smooth_endPoint = p3
+# p2.smooth_distance = 50
+# triggers = {
+#         "hello" : 5,
+#         "test" : 150
+#     }
+# trajectory = system.lin(robot, p1, 20, speed_multiplier=1, start=p_start).trjectory
+# TH.start_handling()
+# trajectory2 = system.lin(robot, p2, 20, speed_multiplier=1, start=trajectory[-1], triggers=triggers).trjectory
+# trajectory3 = system.lin(robot, p4, 20, speed_multiplier=1, start=trajectory2[-1]).trjectory
+# TH.end_handling()
 
-    # Первый линейный переход
-    lin_result1 = await system.lin(robot, p1, 20, speed_multiplier=1, start=p_start)
-    print("LIN 1")
-    trajectory1 = lin_result1.trjectory
+" CIRC "
+def hello_trigger_handler():
+    print("Hello")
+    system.set_position_id(robot, "")
 
-    # Параллельно запускаем enable_gripper и второй линейный переход
-    gripper_task = asyncio.create_task(enable_gripper())
-    triggers={
-        "hello" : 100,
-        "test" : 5
+TH = TriggerHandler(robot_data=robot, system=system)
+TH.add_trigger("hello", hello_trigger_handler)
+
+triggers = {
+        "hello" : 5,
+        "test" : 150
     }
-    lin_result2_task = asyncio.create_task(system.lin(robot, p2, 20, speed_multiplier=1, start=trajectory1[-1], triggers=triggers))
 
-    # Ждём завершения trajectory2
-    lin_result2 = await lin_result2_task
-    print("LIN 2")
-    trajectory2 = lin_result2.trjectory
-
-    # Дожидаемся грейфера (если он ещё не завершён)
-    await gripper_task
-
-    # Третий линейный переход
-    lin_result3 = await system.lin(robot, p4, 20, speed_multiplier=1, start=trajectory2[-1])
-    trajectory3 = lin_result3.trjectory
-    print("LIN 3")
-
-    # Объединённая траектория
-    trajectory_full = trajectory1 + trajectory2 + trajectory3
-
-    # Визуализация
-    Vizualization(trajectory=trajectory_full).show_mathplotlib_trajectory_plot()
-
-async def enable_gripper():
-    # Function for trigger handling
-    print("enabling gripper")
-    await asyncio.sleep(1)
-    print("enabled_gripper")
-
-asyncio.run(main())
+p1 = XYZPos().from_list([50, 100, 67.117])
+p2 = XYZPos().from_list([150, 0, 67.117, 180, 0, 0])
+p3 = XYZPos().from_list([50, -100, 67.117, 0, 90, 0])
+TH.start_handling()
+Vizualization(system.circ(robot, [p1,p2,p3], 50, arc_angle=300, speed_multiplier=0.3, triggers=triggers).trjectory).show_mathplotlib_trajectory_plot()
+TH.end_handling()
