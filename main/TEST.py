@@ -1,7 +1,7 @@
-# import robot_modules.auth  as auth
 import auth
 from data_types import AnglePos, RobotData, XYZPos, Spline
 from utils.vizualizer import Vizualization
+from utils.triggers import TriggerHandler
 import __robot
 
 # __robot.TRAJECTORY_SEND_SWITCH = False
@@ -45,14 +45,14 @@ robot = RobotData("First", "654123")
 # trajectory1= []+lin1.trjectory+lin4.trjectory
 # Vizualization(trajectory=trajectory1).show_mathplotlib_trajectory_plot()
 " Spline vizualization "
-spl = Spline(robot_data=robot, system=system, num_points=100)
-p0 = XYZPos().from_list([0,150,100, 90, 0, 0])
-p1 = XYZPos().from_list([200,-50,-100])
-p2 = XYZPos().from_list([-200,310,0, -90, 180, 0])
-p3 = XYZPos().from_list([400,50,50])
-spl.add_point(p0, p1, p2, p3)
-trajectory = spl.start_move().trjectory
-Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
+# spl = Spline(robot_data=robot, system=system, num_points=100)
+# p0 = XYZPos().from_list([0,150,100, 90, 0, 0])
+# p1 = XYZPos().from_list([200,-50,-100])
+# p2 = XYZPos().from_list([-200,310,0, -90, 180, 0])
+# p3 = XYZPos().from_list([400,50,50])
+# spl.add_point(p0, p1, p2, p3)
+# trajectory = spl.start_move().trjectory
+# Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
 # print(trajectory)
 " CIRC vizualization "
 ' CIRC to CIRC '
@@ -184,3 +184,48 @@ Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
 # robot.lin([180,-30,-30,40], 100)
 # robot.lin([200,60,30,20])
 # robot.lin([0,-100,-20,100])
+
+""" Triggers test """
+" LIN "
+# def hello_trigger_handler():
+#     print("Hello")
+
+# TH = TriggerHandler(robot_data=robot, system=system)
+# TH.add_trigger("hello", hello_trigger_handler)
+
+# p_start = XYZPos().from_list([200, 200, 100])
+# p1 = XYZPos().from_list([100, 100, 67.117])
+# p2 = XYZPos().from_list([200, 0, 67.117])
+# p3 = XYZPos().from_list([100, -100, 35])
+# p4 = XYZPos().from_list([150, -100, 0])
+# p2.smooth_endPoint = p3
+# p2.smooth_distance = 50
+# triggers = {
+#         "hello" : 5,
+#         "test" : 150
+#     }
+# trajectory = system.lin(robot, p1, 20, speed_multiplier=1, start=p_start).trjectory
+# TH.start_handling()
+# trajectory2 = system.lin(robot, p2, 20, speed_multiplier=1, start=trajectory[-1], triggers=triggers).trjectory
+# trajectory3 = system.lin(robot, p4, 20, speed_multiplier=1, start=trajectory2[-1]).trjectory
+# TH.end_handling()
+
+" CIRC "
+def hello_trigger_handler():
+    print("Hello")
+    system.set_position_id(robot, "")
+
+TH = TriggerHandler(robot_data=robot, system=system)
+TH.add_trigger("hello", hello_trigger_handler)
+
+triggers = {
+        "hello" : 5,
+        "test" : 150
+    }
+
+p1 = XYZPos().from_list([50, 100, 67.117])
+p2 = XYZPos().from_list([150, 0, 67.117, 180, 0, 0])
+p3 = XYZPos().from_list([50, -100, 67.117, 0, 90, 0])
+TH.start_handling()
+Vizualization(system.circ(robot, [p1,p2,p3], 50, arc_angle=300, speed_multiplier=0.3, triggers=triggers).trjectory).show_mathplotlib_trajectory_plot()
+TH.end_handling()

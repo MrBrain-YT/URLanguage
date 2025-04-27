@@ -1,6 +1,6 @@
 """ Classes for creating robots positions or robot data"""
 
-from typing import Union, TYPE_CHECKING
+from typing import Union, TYPE_CHECKING, Any
 from dataclasses import dataclass
 
 import requests
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class XYZPos:
     
-    def __init__(self, smooth_distance:float=5, smooth_endPoint:Union['XYZPos', list['XYZPos'],None]=None, circ_angle:Union[float, None]=None, **kwargs):
+    def __init__(self, smooth_distance:float=5, smooth_endPoint:Union['XYZPos', list['XYZPos'],None]=None, circ_angle:Union[float, None]=None, send:str=None, **kwargs):
         self.x:float = kwargs.get('x')
         self.y:float = kwargs.get('y')
         self.z:float = kwargs.get('z')
@@ -24,9 +24,10 @@ class XYZPos:
         self.smooth_distance:float = smooth_distance
         self.smooth_endPoint:XYZPos = smooth_endPoint
         self.circ_angle:float = circ_angle
+        self.send:str = "" if send is None else send
         
     def __str__(self):
-        return f"XYZPos: {[self.x, self.y, self.z, self.a, self.b, self.c]}"
+        return f"XYZPos: {[self.x, self.y, self.z, self.a, self.b, self.c, self.send]}"
     
     def __eq__(self, value:"XYZPos"):
         return self.x == value.x and self.y == value.y and self.z == value.z
@@ -36,13 +37,14 @@ class XYZPos:
         new_x = data['x']
         new_y = data['y']
         new_z = data['z']
+        new_send = data.get("send")
         if (isinstance(data['a'], (int, float)) and isinstance(data['b'], (int, float)) and isinstance(data['c'], (int, float))):
             new_a = data['a']
             new_b = data['b']
             new_c = data['c']
-            return cls(x=new_x, y=new_y, z=new_z, a=new_c, b=new_b, c=new_a)
+            return cls(x=new_x, y=new_y, z=new_z, a=new_c, b=new_b, c=new_a, send=new_send)
         else:
-            return cls(x=new_x, y=new_y, z=new_z, a=0, b=0, c=0)
+            return cls(x=new_x, y=new_y, z=new_z, a=0, b=0, c=0, send=new_send)
     
     @classmethod
     def from_list(cls, data:list):
@@ -66,16 +68,19 @@ class XYZPos:
                     'a': self.c,
                     'b': self.b,
                     'c': self.a,
+                    'send': self.send,
                 }
         elif isinstance(export_type, list) or export_type is list:
-            return [self.x, self.y, self.z, self.c, self.b, self.a]
+            return [self.x, self.y, self.z, self.c, self.b, self.a, self.send]
         else:
             raise ValueError('Export type must be a list or dictionary')  
         
 class AnglePos:
     
-    def __init__(self, *args):
+    def __init__(self, send:str=None, use_send:bool=True, *args):
         self.angles = {}
+        if use_send:
+            self.angles["send"] = "" if send is None else send
         for index, arg in enumerate(args):
             if not isinstance(arg, (int, float)):
                 raise TypeError('All arguments must be numbers')
@@ -85,9 +90,24 @@ class AnglePos:
     def __len__(self):
         return len(self.angles.keys())
     
-    def __getitem__(self, index:int) -> float:
-        return self.export_to(list)[index]
-                
+    def __getitem__(self, key:str) -> Union[Any, None]:
+        if isinstance(key, str):
+            return self.angles.get(key)
+        elif isinstance(key, int):
+            return self.export_to(list)[key]
+        else:
+            raise TypeError("Subscription argument can only be of type string or int")
+    
+    def __setitem__(self, key:str, value:Any) -> None:
+        if isinstance(key, str):
+            self.angles[key] = value
+        elif isinstance(key, int):
+            values = list(self.angles.keys())
+            str_key = values.index(key)
+            self.angles[str_key] = value
+        else:
+            raise TypeError("Subscription argument can only be of type string or int")
+        
     def __str__(self):
         return str(self.angles)
         
@@ -97,9 +117,15 @@ class AnglePos:
         else:
             for key, value in data.items():
                 self.angles[key] = value
+                
+        if "send" not in list(self.angles.keys()):
+            self.angles["send"] = ""
         return self
     
     def from_list(self, data:list):
+        """ Import data from list \n
+        Used only for angles parameters, not `send` parameter
+        """
         for index, arg in enumerate(data):
             if not isinstance(arg, (int, float)):
                 raise TypeError('All arguments must be numbers')
@@ -159,7 +185,7 @@ class Spline:
             raise ValueError("Для сглаженного сплайна требуется минимум 4 точки.")
 
         # Преобразуем точки в массив NumPy
-        converted_points = np.array([point.export_to(export_type=list) for point in self.points])
+        converted_points = np.array([point.export_to(export_type=list)[0:-1] for point in self.points])
 
         # Добавляем фиктивные крайние точки (чтобы не терять сегменты)
         extended_points = np.vstack([converted_points[0], converted_points, converted_points[-1]])
@@ -206,7 +232,10 @@ class Spline:
     def start_move(self) -> "ReturnData":
         full_trajectory_points = self._create_scypy_spline_points()
         arc_points = self.system.xyz_to_angle(self.robot_data, full_trajectory_points, is_multi_point=True)
-        
+        # Set send parameter from xyz point to angle point
+        for index, point in enumerate(full_trajectory_points):
+                arc_points[index]["send"] = point.send
+                
         new_speeds:list = []
         for index, point in enumerate(arc_points):
             old_point:AnglePos = None
@@ -222,13 +251,10 @@ class Spline:
                     old_point = AnglePos().from_dict(current_angles[-1])
                 else:
                     old_point = AnglePos().from_dict(current_angles)
-
-                old_point = AnglePos().from_list(old_point)
-                
             else:
                 old_point = arc_points[index-1]
             speed = self.system._speed_multiplier(self.system.calculate_speed(old_point, point, self.lin_step_count), self.speed_multiplier)
-            new_speeds.append(AnglePos().from_list(speed))
+            new_speeds.append(AnglePos(use_send=False).from_list(speed))
             
         position_responce = self.system.set_robot_position(self.robot_data, arc_points, is_multi_point=True, last_point_position=self.points[-1])
         speed_responce = self.system.set_robot_speed(self.robot_data, new_speeds, is_multi_point=True)

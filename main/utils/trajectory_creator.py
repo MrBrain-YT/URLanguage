@@ -1,5 +1,4 @@
 from typing import Union
-import math
 
 import numpy as np
 from scipy.interpolate import CubicSpline
@@ -23,8 +22,8 @@ class TrajectoryConstructor:
             Возвращает None, если percentage не находится в диапазоне от 0 до 100.
         """
         # Convert from XYZPos to list
-        start_point = start_point.export_to(export_type=list)
-        end_point = end_point.export_to(export_type=list)
+        start_point = start_point.export_to(export_type=list)[0:-1]
+        end_point = end_point.export_to(export_type=list)[0:-1]
         
         # if not 0 <= percentage <= 100:
         #     return None  # Проверка на допустимый процент
@@ -150,8 +149,8 @@ class TrajectoryConstructor:
             Расстояние между точками.
         """
         # Convert points to numpy arrays
-        p1 = np.array(point1.export_to(export_type=list))
-        p2 = np.array(point2.export_to(export_type=list))
+        p1 = np.array(point1.export_to(export_type=list)[0:-1])
+        p2 = np.array(point2.export_to(export_type=list)[0:-1])
         
         # Calculate the Euclidean distance
         distance = np.linalg.norm(p1 - p2)
@@ -300,8 +299,8 @@ class TrajectoryConstructor:
         c_new_delta = c_step * distance
         getted_start_point = start_point
         
-        start_point = np.array(start_point.export_to(export_type=list))
-        end_point = np.array(end_point.export_to(export_type=list))
+        start_point = np.array(start_point.export_to(export_type=list)[0:-1])
+        end_point = np.array(end_point.export_to(export_type=list)[0:-1])
         direction = end_point - start_point  # Вектор направления
         length = np.linalg.norm(direction)  # Длина вектора
 
@@ -328,8 +327,8 @@ class TrajectoryConstructor:
             raise ValueError("The number of points must be at least 2.")
 
         # Получаем значения из start и end
-        x1, y1, z1, a1, b1, c1 = start.export_to(list)
-        x2, y2, z2, a2, b2, c2 = end.export_to(list)
+        x1, y1, z1, a1, b1, c1, send = start.export_to(list)
+        x2, y2, z2, a2, b2, c2, send = end.export_to(list)
 
         # Вычисляем шаги для координат и ориентации
         x_step = (x2 - x1) / (num_points - 1)
@@ -351,6 +350,19 @@ class TrajectoryConstructor:
             point = XYZPos().from_list([x, y, z, a, b, c])
             points.append(point)
         return points
+    
+    def set_trigger_point_in_trajectory(self, trajectory: list[XYZPos], length:float, trigger_id:str) -> tuple[int, XYZPos, list[XYZPos]]:
+        trajectory_length = 0
+        for index, position in enumerate(trajectory):
+            if index == len(trajectory) - 1:
+                pass
+            else:
+                trajectory_length += self.distance_between_points(position, trajectory[index + 1])
+            
+            if trajectory_length > length:
+                trajectory[index].send = trigger_id
+                return index, trajectory[index], trajectory 
+        raise ValueError("The specified length exceeds the trajectory length.")
     
     @staticmethod
     def find_smoothing_points(updating_end_point: Union[list, XYZPos], cartesian_points: list[XYZPos]) -> list[XYZPos]:
@@ -416,8 +428,6 @@ class TrajectoryConstructor:
                     full_trajectory_points.extend(smoothed_arc_points)
                     if point.smooth_endPoint.smooth_endPoint is None:
                         full_trajectory_points.extend(line_2)
-                    else:
-                        pass
                 else:
                     # LIN to CIRC
                     # Find smooth distance end LIN point
@@ -502,9 +512,9 @@ class TrajectoryConstructor:
                     start_smoothing_point = self.point_on_trajectory(end_circ_point, point[2].smooth_endPoint, point[2].smooth_distance)
                     
                     # Find middle spline point
-                    A = np.array(coords[-1].export_to(list))
-                    C = np.array(smoothed_coords[-1].export_to(export_type=list))
-                    B = np.array(start_smoothing_point.export_to(list))
+                    A = np.array(coords[-1].export_to(list)[0:-1])
+                    C = np.array(smoothed_coords[-1].export_to(export_type=list)[0:-1])
+                    B = np.array(start_smoothing_point.export_to(list)[0:-1])
                     middle_spline_point = XYZPos.from_list(self.bisector_point(A, B, C, point[2].smooth_distance, 0.33).tolist())
                     
                     end_smoothing_point.a = last_circ_point.a; end_smoothing_point.b = last_circ_point.b; end_smoothing_point.c = last_circ_point.c
@@ -516,7 +526,7 @@ class TrajectoryConstructor:
                         start_smoothing_point.b = end_smoothing_point.b + b_delta; start_smoothing_point.c = end_smoothing_point.c + c_delta
                     middle_spline_point.a = end_smoothing_point.a + (a_delta / 2);\
                         middle_spline_point.b = end_smoothing_point.b + (b_delta / 2); middle_spline_point.c = end_smoothing_point.c + (c_delta / 2)
-                    # TODO: repair Spline parametrs
+                    # TODO: repair Spline parameters
                     smoothed_trajectory = Spline(robot_data, system=self).add_point(end_smoothing_point, middle_spline_point, start_smoothing_point, start_smoothing_point)._create_catmull_rom_spline_points()
                     full_trajectory_points.extend([cord for cord in coords])
                     full_trajectory_points += smoothed_trajectory
