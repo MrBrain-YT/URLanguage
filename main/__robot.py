@@ -341,21 +341,24 @@ class Robot():
             return "The robot is currently in emergency stop"
             
 
-    def get_log(self, robot_data:RobotData) -> dict:
+    def get_robot_log(self, robot_data:RobotData, timestamp:int=None) -> dict:
         url = f"https://{self._host}:{str(self._port)}/GetRobotLogs"
         data = {
             "robot": robot_data.name,
             "token": self._token
             }
+        if timestamp is not None:
+            data["timestamp"] = timestamp
         return requests.post(url, verify=True, json=data).json()
 
-    def get_last_log(self, robot_data:RobotData) -> dict:
-        url = f"https://{self._host}:{str(self._port)}/GetRobotLogs"
-        data = {
-            "robot": robot_data.name,
-            "token": self._token
-            }
-        return requests.post(url, verify=True, json=data).json()["data"][-1]
+    # cut out due to unnecessary reasons
+    # def get_last_log(self, robot_data:RobotData) -> dict:
+    #     url = f"https://{self._host}:{str(self._port)}/GetRobotLogs"
+    #     data = {
+    #         "robot": robot_data.name,
+    #         "token": self._token
+    #         }
+    #     return requests.post(url, verify=True, json=data).json()["data"][-1]
     
     def debug(self, robot_data:RobotData, text:str) -> dict:
         url = f"https://{self._host}:{str(self._port)}/AddRobotLog"

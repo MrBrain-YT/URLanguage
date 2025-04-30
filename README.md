@@ -420,17 +420,17 @@ trajectory = system.circ(robot, [p1,p2,p3], 300, arc_angle=3600).trjectory
         ```python
         def circ(self, robot_data:RobotData, points_xyz:list[XYZPos], count_points:int, arc_angle:float=None, speed_multiplier:float=1, lin_step_count:int=10) -> ReturnData:
         ```
-    - `get_log` - Получение логов робота
+    - `get_robot_log` - Получение логов робота
 
         ```python
-        def get_log(self, robot_data:RobotData) -> dict:
+        def get_robot_log(self, robot_data:RobotData, timestamp:int=None) -> dict:
         ```
     - `get_last_log` - Получение посленего лога робота
 
         ```python
-        def get_last_log(self, robot_data:RobotData) -> dict:
+        def get_last_log(self, robot_data:RobotData, timestamp:int=None) -> dict:
         ```
-    - `debug` - Добавление в лог робота DEBUG сообщение
+    - `debug` - Добавление в лог робота DEBUG сообщения
 
         ```python
         def debug(self, robot_data:RobotData, text:str) -> dict:
@@ -524,11 +524,6 @@ trajectory = system.circ(robot, [p1,p2,p3], 300, arc_angle=3600).trjectory
 
     ```python
     def get_system_log(self) -> dict:
-    ```
-    `get_system_last_log` - Получение последнего системного лога
-
-    ```python
-    def get_system_last_log(self) -> dict:
     ```
 
 - <h3 id='__SuperAdmin'>SuperAdmin</h3>
