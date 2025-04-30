@@ -148,22 +148,17 @@ class system(__user.system):
         resp = requests.post(url, verify=True, json=data).json()
         return resp
     
-    def get_system_log(self) -> dict:
+    def get_system_log(self, timestamp:int=None) -> dict:
         url = f"https://{self._host}:{self._port}/GetSystemLogs"
         data = {
             "token": self._token
             }
+        if timestamp is not None:
+            data["timestamp"] = timestamp
         resp = requests.post(url, verify=True, json=data).json()
         return resp
     
-    def get_system_last_log(self) -> dict:
-        url = f"https://{self._host}:{self._port}/GetSystemLogs"
-        data = {
-            "token": self._token
-            }
-        resp = requests.post(url, verify=True, json=data).json()
-        return resp
-    
+    # Reanamed to "debug" -> __robot.py
     # def add_log(self, robot_data:RobotData, type:str, text:str) -> bool:
     #     url = f"https://{self._host}:{str(self._port)}/AddRobotLog"
     #     data = {

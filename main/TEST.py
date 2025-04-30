@@ -17,6 +17,8 @@ robot = RobotData("First", "654123")
 """ Other commands """
 # print(robot.xyz_to_angle("First", [[100, -100, 67.117],[200, 0, 67.117],[100, 100, 67.117]], "654123"))
 # robot.set_program("First", "print('Test 1234')", "654123")
+print(system.get_robot_log(robot, timestamp=1745249304)["data"])
+print(system.get_system_log(timestamp=1745249304)["data"])
 
 """ Data vizualization test """
 " Smooth angle vizualization "
@@ -211,21 +213,21 @@ robot = RobotData("First", "654123")
 # TH.end_handling()
 
 " CIRC "
-def hello_trigger_handler():
-    print("Hello")
-    system.set_position_id(robot, "")
+# def hello_trigger_handler():
+#     print("Hello")
+#     system.set_position_id(robot, "")
 
-TH = TriggerHandler(robot_data=robot, system=system)
-TH.add_trigger("hello", hello_trigger_handler)
+# TH = TriggerHandler(robot_data=robot, system=system)
+# TH.add_trigger("hello", hello_trigger_handler)
 
-triggers = {
-        "hello" : 5,
-        "test" : 150
-    }
+# triggers = {
+#         "hello" : 5,
+#         "test" : 150
+#     }
 
-p1 = XYZPos().from_list([50, 100, 67.117])
-p2 = XYZPos().from_list([150, 0, 67.117, 180, 0, 0])
-p3 = XYZPos().from_list([50, -100, 67.117, 0, 90, 0])
-TH.start_handling()
-Vizualization(system.circ(robot, [p1,p2,p3], 50, arc_angle=300, speed_multiplier=0.3, triggers=triggers).trjectory).show_mathplotlib_trajectory_plot()
-TH.end_handling()
+# p1 = XYZPos().from_list([50, 100, 67.117])
+# p2 = XYZPos().from_list([150, 0, 67.117, 180, 0, 0])
+# p3 = XYZPos().from_list([50, -100, 67.117, 0, 90, 0])
+# TH.start_handling()
+# Vizualization(system.circ(robot, [p1,p2,p3], 50, arc_angle=300, speed_multiplier=0.3, triggers=triggers).trjectory).show_mathplotlib_trajectory_plot()
+# TH.end_handling()
