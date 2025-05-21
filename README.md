@@ -28,6 +28,11 @@
   </li>
   <li><a href='#vis'>Визуализация</a></li>
   <li><a href='#triggers'>Триггеры</a></li>
+  <li><a href='#calibration'>Калибровка</a></li>
+  <ul>
+     <li><a href='#calibration_tool'>Инструмент</a></li>
+     <li><a href='#calibration_base'>База</a></li>
+  </ul>
   <li><a href='#move'>Перемещения</a>
   <ul>
     <li><a href='#lin2lin'>LIN => LIN</a></li>
@@ -39,6 +44,7 @@
   </li>
   <li><a href='#comands'>Команды</a>
   <ul>
+    <li><a href='#__bases'>__bases</a></li>
     <li><a href='#__robot'>__robot</a></li>
     <li><a href='#__tools'>__tools</a></li>
     <li><a href='#__user'>User</a></li>
@@ -66,7 +72,7 @@
 
         ```python
         system = Auth(server_token="15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a",
-                ip="localhost", port=5000).user("user","12345").system(host="localhost", port=5000)
+                ip="ursystem.local", port=5000).user("user","12345").system(host="ursystem.local", port=5000)
         system.ptp(robot, pos)
         ```
 
@@ -78,7 +84,7 @@
 
         ```python
         system = Auth(server_token="15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a",
-                ip="localhost", port=5000).admin("Admin","12345").system(host="localhost", port=5000)
+                ip="ursystem.local", port=5000).admin("Admin","12345").system(host="ursystem.local", port=5000)
         system.delete_robot(robot_name="First")
         ```
 
@@ -90,7 +96,7 @@
 
         ```python
         system = Auth(server_token="15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a",
-                ip="localhost", port=5000).SuperAdmin("SuperAdmin","12345").system(host="localhost", port=5000)
+                ip="ursystem.local", port=5000).SuperAdmin("SuperAdmin","12345").system(host="ursystem.local", port=5000)
         system.delete_user(name="Jon")
         ```
 
@@ -106,8 +112,8 @@
 
         __robot.TRAJECTORY_SEND_SWITCH = False
 
-        system = auth.Auth("localhost", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a", symulate=True)\
-            .super_admin("SuperAdmin", "12345").system("localhost", 5000)
+        system = auth.Auth("ursystem.local", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a", symulate=True)\
+            .super_admin("SuperAdmin", "12345").system("ursystem.local", 5000)
         ```
 
         - `__robot.TRAJECTORY_SEND_SWITCH = False` - отключение отправки данных на сервер в модуле `__robot`
@@ -125,7 +131,7 @@
 import auth
 
 accounts_server = auth.Auth(server_token="15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a",
-        ip="localhost", port=5000)
+        ip="ursystem.local", port=5000)
 ```
 
 `server_token` — это набор символов, подтверждающий вашу принадлежность к определённой компании. Если вы использовали правильный токен, сервер обработает ваш запрос и проверит логин и пароль (в момент инициализации класса Auth никаких проверок не происходит, только сохранение данных).
@@ -139,7 +145,7 @@ account = accounts_server.user(name="user", password="12345")
 Теперь, имея учётную запись, мы можем подключиться к системе:
 
 ```python
-system = account.system(host="localhost", port=5000)
+system = account.system(host="ursystem.local", port=5000)
 ```
 
 А затем, будучи подключённым к системе, можно использовать команды для работы. Вот пример кода:
@@ -265,6 +271,45 @@ Vizualization(system.circ(robot, [p1,p2,p3], 50, arc_angle=300, speed_multiplier
 TH.end_handling()
 ```
 
+<h1 id='calibration'>Каллибровка</h1>
+
+- <h3 id='calibraton_tool'>Инструмент</h3>
+
+    Калибровка инструмента производится методом 4 точек. Итоговый результат каллибровки это смещение конечной точки инструмента относительно фланца робота. Каллибровка осуществляеться при помощи функции `calibrate_tool` из модуля `utils.calibration`.
+
+    ### Пример
+    <img src='img/Calibraiton_2.png' height=225px align="right"></img>
+    ```python
+    from utils.calibration import calibrate_tool
+    from data_types import XYZPos
+
+    p1 = XYZPos().from_list([0.0, 200.0, 200.0,   0.0,   0.0,   -90.0])
+    p2 = XYZPos().from_list([10.0, 190.0, 200.0,  0.0,   90.0,   0.0])
+    p3 = XYZPos().from_list([0.0, 180.0, 200.0,   0.0,  0.0,   90.0])
+    p4 = XYZPos().from_list([-10.0, 190.0, 200.0,  0.0,   -90.0,  0.0])
+    Vizualization([p1,p2,p3,p4]).show_plotly_trajectory_plot()
+
+    print(calibration_tool([p1,p2,p3,p4]))
+    ```
+    ---
+
+- <h3 id='calibraton_base'>База</h3>
+
+    Калибровка Базы производится методом 3 точек. Итоговый результат каллибровки это точка (её позиция и вращение относительно глобальной системы координат). Каллибровка осуществляеться при помощи функции `calibrate_base` из модуля `utils.calibration`.
+
+    ### Пример
+    ```python
+    from utils.calibration import calibrate_base
+    from data_types import XYZPos
+
+    positions_list = [
+        XYZPos().from_list([0.0, 0.0, 0.0]),
+        XYZPos().from_list([-10.0, 10.0, 0.0]),
+        XYZPos().from_list([-10.0, -10.0, 0.0])
+    ]
+    base_data = calibration_base(positions_list)
+    ```
+
 <h1 id='move'>Перемещения</h1>
 
 <img src='img/lin_lin.png' width=320px align="right"></img>
@@ -349,7 +394,20 @@ trajectory = system.circ(robot, [p1,p2,p3], 300, arc_angle=3600).trjectory
 
 <h1 id='comands'>Команды</h1>
 
-На основе модулей `__robot` и `__tools` строится модуль `__user`
+На основе модулей `__robot`, `__tools` и `__bases` строится модуль `__user`
+- <h3 id='__bases'>__bases</h3>
+
+    - `get_base` - Получение базы по идентификационному имени
+    
+        ```python
+        def get_base(self, base_name:str) -> dict:
+        ```
+    - `set_robot_base` - Множитель скорости для списка скоростей осей
+
+        ```python
+        def set_robot_base(self, robot_data:RobotData, tool_id:str) -> dict:
+        ```
+
 - <h3 id='__robot'>__robot</h3>
 
     - `_speed_multiplier` - Множитель скорости для списка скоростей осей
@@ -445,6 +503,16 @@ trajectory = system.circ(robot, [p1,p2,p3], 300, arc_angle=3600).trjectory
         ```python
         def delete_program(self, robot_data:RobotData) -> dict:
         ```
+    - `get_position_id` - Получение идентификационного имени активного триггера
+
+        ```python
+        def get_position_id(self, robot_data:RobotData) -> dict:
+        ```
+    - `set_position_id` - Установка идентификационного имени активного триггера
+
+        ```python
+        def set_position_id(self, robot_data:RobotData, position_id: int) -> dict:
+        ```
 
 - <h3 id='__tools'>__tools</h3>
 
@@ -453,121 +521,150 @@ trajectory = system.circ(robot, [p1,p2,p3], 300, arc_angle=3600).trjectory
         ```python
         def get_tool_info(self, id:str) -> dict:
         ```
-
     - `set_tool_info` - Установка данных инструмента
 
         ```python
         def set_tool_info(self, id:str, config:Any) -> dict:
         ```
+    - `set_robot_tool` - Привязка инструмента к роботу
+
+        ```python
+        def set_robot_tool(self, robot_data:RobotData, tool_id:str) -> dict:
+        ```
 
 - <h3 id='__user'>User</h3>
 
-    `SetEmergency` - Установить значение виртуального аварийновго останова робота
+    - `SetEmergency` - Установить значение виртуального аварийного останова робота
 
-    ```python
-    def set_emergency(self, robot_data:RobotData, state:bool) -> dict:
-    ```
+        ```python
+        def set_emergency(self, robot_data:RobotData, state:bool) -> dict:
+        ```
 
 - <h3 id='__admin'>Admin</h3>
 
-    `add_kinematics` - Загрузка файлов кинематики на сервер
+    - `add_kinematics` - Загрузка файлов кинематики на сервер
 
-    ```python
-    def add_kinematics(self, path:str, file_name:str) -> dict:
-    ```
-    `bind_kinematics` - Привязка кинематики к роботу
+        ```python
+        def add_kinematics(self, path:str, file_name:str) -> dict:
+        ```
+    - `bind_kinematics` - Привязка кинематики к роботу
 
-    ```python
-    def bind_kinematics(self, robot_data:RobotData, folder_name:str) -> dict:
-    ```
-    `add_tool` - Добавление инструмента
+        ```python
+        def bind_kinematics(self, robot_data:RobotData, folder_name:str) -> dict:
+        ```
+    - `add_tool` - Добавление инструмента
 
-    ```python
-    def add_tool(self, id:str) -> dict:
-    ```
-    `add_robot` - Добавление робота
+        ```python
+        def add_tool(self, id:str) -> dict:
+        ```
+    - `add_robot` - Добавление робота
 
-    ```python
-    def add_robot(self, robot_data:RobotData, angle_count:int, kinematics:str="None") -> dict:
-    ```
-    `set_robot_home` - Установить значение домашней позиции робота
+        ```python
+        def add_robot(self, robot_data:RobotData, password:str, angle_count:int, kinematics:str="None") -> dict:
+        ```
+    - `set_robot_home` - Установить значение домашней позиции робота
 
-    ```python
-    def set_robot_home(self, robot_data:RobotData, angles:list) -> dict:
-    ```
-    `delete_tool` - Удалить инструмент
+        ```python
+        def set_robot_home(self, robot_data:RobotData, angles:list) -> dict:
+        ```
+    - `delete_tool` - Удалить инструмент
 
-    ```python
-    def delete_tool(self, id) -> dict:
-    ```
-    `delete_robot` - Удалить робота
+        ```python
+        def delete_tool(self, id) -> dict:
+        ```
+    - `delete_robot` - Удалить робота
 
-    ```python
-    def delete_robot(self, robot_data:RobotData) -> dict:
-    ```
-    `add_user` - Добавить пользователя (только с ролью user)
+        ```python
+        def delete_robot(self, robot_data:RobotData) -> dict:
+        ```
+    - `add_user` - Добавить пользователя (только с ролью user)
 
-    ```python
-    def add_user(self, name:str, password:str) -> dict:
-    ```
-    `get_robots` - Получение конфигурации всех роботов (параметр `ProgramToken` не передаётся)
+        ```python
+        def add_user(self, name:str, password:str) -> dict:
+        ```
+    - `get_robots` - Получение конфигурации всех роботов (параметр `ProgramToken` не передаётся)
 
-    ```python
-    def get_robots(self) -> dict:
-    ```
-    `get_robot` - Получение конфигурации робота (параметр `ProgramToken` не передаётся)
+        ```python
+        def get_robots(self) -> dict:
+        ```
+    - `get_robot` - Получение конфигурации робота (параметр `ProgramToken` не передаётся)
 
-    ```python
-    def get_robot(self, robot_data:RobotData) -> dict:
-    ```
-    `get_system_log` - Получение системного лога
+        ```python
+        def get_robot(self, robot_data:RobotData) -> dict:
+        ```
+    - `get_system_log` - Получение системного лога
 
-    ```python
-    def get_system_log(self) -> dict:
-    ```
+        ```python
+        def get_system_log(self) -> dict:
+        ```
+    - `set_calibrated_data` - Установка данных о калибровке инструмента
+
+        ```python
+        def set_calibrated_data(self, tool_id:str, data:dict) -> dict:
+        ```
+    - `create_base` - Создание базы
+
+        ```python
+        def create_base(self, base_name:str) -> dict:
+        ```
+    - `get_bases` - получение всех баз
+
+        ```python
+        def get_bases(self) -> dict:
+        ```
+    - `set_base_data` - Установка данных о калибровке базы
+
+        ```python
+        def set_base_data(self, base_name:str, base_data:dict) -> dict:
+        ```
+    - `delete_base` - Удаление базы
+
+        ```python
+        def delete_base(self, base_name:str) -> dict:
+        ```
 
 - <h3 id='__SuperAdmin'>SuperAdmin</h3>
 
-    `delete_user` - Удалить пользователя
+    - `delete_user` - Удалить пользователя
 
-    ```python
-    def delete_user(self, name:str) -> dict:
-    ```
-    `add_user` - Добавить пользователя (с любой ролью, кроме `System`)
+        ```python
+        def delete_user(self, name:str) -> dict:
+        ```
+    - `add_user` - Добавить пользователя (с любой ролью, кроме `System`)
 
-    ```python
-    def add_user(self, name:str, password:str, role:str) -> dict:
-    ```
-    `get_user_accounts` - Получение информации об аккаунте (аккаунты с ролями `System` и `SuperAdmin` не передаются)
+        ```python
+        def add_user(self, name:str, password:str, role:str) -> dict:
+        ```
+    - `get_user_accounts` - Получение информации об аккаунте (аккаунты с ролями `System` и `SuperAdmin` не передаются)
 
-    ```python
-    def get_user_accounts(self) -> str:
-    ```
-    `change_password` - Изменить пароль аккаунта
+        ```python
+        def get_user_accounts(self) -> str:
+        ```
+    - `change_password` - Изменить пароль аккаунта
 
-    ```python
-    def change_password(self, name:str, password:str) -> dict:
-    ```
-    `get_account_token` - Получение токена аккаунта
+        ```python
+        def change_password(self, name:str, password:str) -> dict:
+        ```
+    - `get_account_token` - Получение токена аккаунта
 
-    ```python
-    def get_account_token(self, name:str, password:str) -> dict:
-    ```
-    `change_token` - Изменение токена аккаунта
+        ```python
+        def get_account_token(self, name:str, password:str) -> dict:
+        ```
+    - `change_token` - Изменение токена аккаунта
 
-    ```python
-    def change_token(self, name:str, password:str) -> dict:
-    ```
-    `export_cache` - Экспорт конфигурации сервера (Роботов, инструментов и фреймов)
+        ```python
+        def change_token(self, name:str, password:str) -> dict:
+        ```
+    - `export_cache` - Экспорт конфигурации сервера (Роботов, инструментов и фреймов)
 
-    ```python
-    def export_cache(self) -> dict:
-    ```
-    `import_cache` - Импорт конфигурации сервера
+        ```python
+        def export_cache(self) -> dict:
+        ```
+    - `import_cache` - Импорт конфигурации сервера
 
-    ```python
-    def import_cache(self, robots:dict, tools:dict, frames:dict) -> dict:
-    ```
+        ```python
+        def import_cache(self, robots:dict, tools:dict, frames:dict) -> dict:
+        ```
 
 
 <h1 id='help'>Помощь в разработке</h1>
@@ -577,4 +674,6 @@ trajectory = system.circ(robot, [p1,p2,p3], 300, arc_angle=3600).trjectory
 
 <h1 id='links'>Ссылки</h1>
 
-- [`URSystem`](https://github.com/MrBrain-YT/URSystem)
+[`URSystem`](https://github.com/MrBrain-YT/URSystem) - система управления роботами
+
+[`URModel`](https://github.com/MrBrain-YT/URModel) - симуляциz первого робота работающего на системе управления URSystem

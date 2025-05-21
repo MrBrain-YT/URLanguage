@@ -1,28 +1,94 @@
 import auth
-from data_types import AnglePos, RobotData, XYZPos, Spline
+from data_types import AnglePos, RobotData, XYZPos, Spline, StaticData
 from utils.vizualizer import Vizualization
 from utils.triggers import TriggerHandler
+from utils.calibrate import calibration_tool, calibration_base
 import __robot
 
 # __robot.TRAJECTORY_SEND_SWITCH = False
 
-system = auth.Auth("localhost", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a")\
-    .super_admin("SuperAdmin", "12345").system("localhost", 5000) #, symulate=True
+# system = auth.Auth("ursystem.local", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a")\
+#     .super_admin("SuperAdmin", "12345").system("ursystem.local", 5000) #, symulate=True
     
-robot = RobotData("First", "654123")
+# robot = RobotData("First", "654123")
+# robot2 = RobotData("NewRobot", "000000")
 
 """ New API test"""
-# print(type(system.check_emergency(robot)))
+# print(system.get_robots())
+# print(system.check_emergency(robot))
+
+""" Bases test """
+" create base and send manual calibration data "
+# print(system.get_bases())
+# print(system.create_base("one"))
+# invalid_base_data = {"x": 0, "y": 0, "z": 0}
+# base_data = {"x": 0, "y": 150, "z": 0,
+#              "a": 0, "b": 0, "c": 45}
+# print(system.set_base_data("one", base_data))
+# print(system.set_robot_base(robot, "test"))
+# print(system.delete_base("one"))
+" send auto calibrated data "
+positions_list = [
+    XYZPos().from_list([0.0, 0.0, 0.0]),
+    XYZPos().from_list([-10.0, 10.0, 0.0]),
+    XYZPos().from_list([-10.0, -10.0, 0.0])
+]
+base_data = calibration_base(positions_list)
+# print(system.set_base_data("test", base_data))
+# p_start = XYZPos().from_list([0, 0, 0, 0, 0, 0])
+# p1 = XYZPos().from_list([0, 100, 0, 90, 0, 0])
+# print(system.lin(robot, p1, StaticData.CoordinatesSystem.BASE, start=p_start))
     
 """ Other commands """
 # print(robot.xyz_to_angle("First", [[100, -100, 67.117],[200, 0, 67.117],[100, 100, 67.117]], "654123"))
 # robot.set_program("First", "print('Test 1234')", "654123")
-print(system.get_robot_log(robot, timestamp=1745249304)["data"])
-print(system.get_system_log(timestamp=1745249304)["data"])
+# print(system.add_user("test", 54321, StaticData.Roles.USER))
+# print(system.delete_user("test"))
+# print(system.get_robot_log(robot, timestamp=1745249304)["data"])
+# print(system.get_system_log(timestamp=1745249304)["data"])
+# print(system.add_robot(robot2, "54321", 4))
+# print(system.delete_robot(robot2))
+" Tools comands "
+# print(system.add_tool("gripper"))
+# calibration_data = {
+#     "x": 0,
+#     "y": 0,
+#     "z": 0,
+# }
+# print(system.set_calibrated_data("gripper", calibration_data))
+# print(system.set_robot_tool(robot, "gripper"))
+# p_start = XYZPos().from_list([0,0,0, 0, 0, 0])
+# p1 = XYZPos().from_list([0, 100, 0, 180, 0, 0])
+# print(tool_angle := system.xyz_to_angle(robot, p1, StaticData.CoordinatesSystem.TOOL))
+# print(system.xyz_to_angle(robot, p1, StaticData.CoordinatesSystem.FLANGE))
+# print(system.angle_to_xyz(robot, [tool_angle]))
+# print(system.lin(robot, p1, StaticData.CoordinatesSystem.FLANGE, start=p_start))
+# print(system.lin(robot, p1, StaticData.CoordinatesSystem.TOOL, start=p_start).trjectory[-1])
+" Tools calibration test "
+p1 = XYZPos().from_list([0.0, 200.0, 200.0,   0.0,   0.0,   -90.0])
+p2 = XYZPos().from_list([10.0, 190.0, 200.0,  0.0,   90.0,   0.0])
+p3 = XYZPos().from_list([0.0, 180.0, 200.0,   0.0,  0.0,   90.0])
+p4 = XYZPos().from_list([-10.0, 190.0, 200.0,  0.0,   -90.0,  0.0])
+Vizualization([p1,p2,p3,p4]).show_plotly_trajectory_plot()
+print(calibration_tool([p1,p2,p3,p4]))
+
+# p1 = XYZPos().from_list([0.0, 200.0, 200.0,   0.0,   0.0,   0.0])
+# p2 = XYZPos().from_list([-10.0, 190.0, 200.0,  90.0,   0.0,   0.0])
+# p3 = XYZPos().from_list([0.0, 180.0, 200.0,   180.0,  0.0,   0.0])
+# p4 = XYZPos().from_list([0.0, 190.0, 210.0,  0.0,   0.0,  90.0])
+# Vizualization([p1,p2,p3,p4]).show_plotly_trajectory_plot()
+# print(calibration_tool([p1,p2,p3,p4]))
+
+# p1 = XYZPos().from_list([0.0, 200.0, 200.0,   0.0,   0.0,   0.0])
+# p2 = XYZPos().from_list([10.0, 190.0, 200.0,  90.0,   0.0,   0.0])
+# p3 = XYZPos().from_list([20.0, 200.0, 200.0,   180.0,  0.0,   0.0])
+# p4 = XYZPos().from_list([10.0, 200.0, 210.0,  0.0,   90.0,  0.0])
+# Vizualization([p1,p2,p3,p4]).show_plotly_trajectory_plot()
+# print(calibration_tool([p1,p2,p3,p4]))
 
 """ Data vizualization test """
 " Smooth angle vizualization "
-# pos = AnglePos().from_list([10,40,-40,30])
+# pos = AnglePos().from_list([100,40,-40,30])
 # pos2 = AnglePos().from_list([100,190,0,40])
 # pos3 = AnglePos().from_list([-20,30,70,40])
 # pos4 = AnglePos().from_list([0,90,-20,0])
@@ -47,7 +113,7 @@ print(system.get_system_log(timestamp=1745249304)["data"])
 # trajectory1= []+lin1.trjectory+lin4.trjectory
 # Vizualization(trajectory=trajectory1).show_mathplotlib_trajectory_plot()
 " Spline vizualization "
-# spl = Spline(robot_data=robot, system=system, num_points=100)
+# spl = Spline(robot_data=robot, coordinate_system=StaticData.CoordinatesSystem.FLANGE, system=system, num_points=100)
 # p0 = XYZPos().from_list([0,150,100, 90, 0, 0])
 # p1 = XYZPos().from_list([200,-50,-100])
 # p2 = XYZPos().from_list([-200,310,0, -90, 180, 0])

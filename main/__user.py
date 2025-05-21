@@ -8,6 +8,7 @@ import requests
 
 import __tools
 import __robot
+import __bases
 from data_types import RobotData
 
 external_token = ""
@@ -21,7 +22,7 @@ class tokenizer():
         external_token = self.__token
     
 # United robotics system 
-class system(__robot.Robot, __tools.Tools):
+class system(__robot.Robot, __tools.Tools, __bases.Bases):
     
     def __init__(self, host:str, port:int, *token:str) -> None:
         self._token = token[0] if external_token == "" else external_token
@@ -30,7 +31,7 @@ class system(__robot.Robot, __tools.Tools):
         super().__init__(self._host, self._port, self._token)
         
     def set_emergency(self, robot_data:RobotData, state:bool) -> dict:
-        url = f"https://{self._host}:{self._port}/Emergency"
+        url = f"https://{self._host}:{self._port}/set-emergency"
         data = {
             "robot": robot_data.name,
             "token": self._token,
