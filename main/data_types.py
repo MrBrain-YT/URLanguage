@@ -27,7 +27,7 @@ class XYZPos:
         self.send:str = "" if send is None else send
         
     def __str__(self):
-        return f"XYZPos: {[self.x, self.y, self.z, self.a, self.b, self.c, self.send]}"
+        return f"XYZPos: {[self.x, self.y, self.z, self.c, self.b, self.a, self.send]}"
     
     def __eq__(self, value:"XYZPos"):
         return self.x == value.x and self.y == value.y and self.z == value.z
@@ -143,10 +143,11 @@ class AnglePos:
            
 class Spline:
     
-    def __init__(self, robot_data: "RobotData", system: Union["super_admin.system", "admin.system", "user.system"], points_count: int = 25, speed_multiplier: float = 1, num_points: int = 50):
+    def __init__(self, robot_data: "RobotData", coordinate_system:str, system: Union["super_admin.system", "admin.system", "user.system"], points_count: int = 25, speed_multiplier: float = 1, num_points: int = 50):
         self.points: list[XYZPos] = []
         self.system = system
         self.robot_data = robot_data
+        self.coordinate_system = coordinate_system
         self.lin_step_count = points_count
         self.speed_multiplier = speed_multiplier
         self.num_points = num_points
@@ -231,7 +232,7 @@ class Spline:
             
     def start_move(self) -> "ReturnData":
         full_trajectory_points = self._create_scypy_spline_points()
-        arc_points = self.system.xyz_to_angle(self.robot_data, full_trajectory_points, is_multi_point=True)
+        arc_points = self.system.xyz_to_angle(self.robot_data, full_trajectory_points, self.coordinate_system, is_multi_point=True)
         # Set send parameter from xyz point to angle point
         for index, point in enumerate(full_trajectory_points):
                 arc_points[index]["send"] = point.send
@@ -278,3 +279,17 @@ class ReturnData():
     responce: Union[str, dict, None]
     code: Union[str, dict, None]
     trjectory: list[XYZPos] = None
+    
+class StaticData:
+    
+    class Roles:
+        """  Roles for create new users """
+        USER = "user"
+        ADMIN = "administrator"
+        
+    class CoordinatesSystem:
+        """  Coordinates system for send to moving commands """
+        FLANGE = "flange"
+        TOOL = "tool"
+        BASE = "base"
+        WORLD = "world"

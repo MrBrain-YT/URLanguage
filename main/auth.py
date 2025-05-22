@@ -26,7 +26,7 @@ class Auth():
             if self.symulate:
                 return "SuperAdmin", "123456789*qwerty"
             else:
-                url = f"https://{self.ip}:{self.port}/GetRoleAccount"
+                url = f"https://{self.ip}:{self.port}/get-account-data"
                 data = {
                     "name": name,
                     "password": password, 
@@ -34,7 +34,7 @@ class Auth():
                     }
                 response = requests.post(url, verify=True, json=data).json()
                 if response.get("status"):
-                    return response.get("role"), response.get("token")
+                    return response.get("data").get("role"), response.get("data").get("token")
                 else:
                     raise ValueError("Wrong login or password")
         except:

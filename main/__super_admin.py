@@ -28,7 +28,7 @@ class system(__admin.system):
         super().__init__(host, port, self._token)
         
     def delete_user(self, name:str) -> dict:
-        url = f"https://{self._host}:{self._port}/DeleteAccount"
+        url = f"https://{self._host}:{self._port}/delete-account"
         data = {
             "name": name,
             "token": self._token
@@ -38,7 +38,7 @@ class system(__admin.system):
 
     def add_user(self, name:str, password:str, role:str) -> dict:
         if password != "robot":
-            url = f"https://{self._host}:{self._port}/CreateAccount"
+            url = f"https://{self._host}:{self._port}/create-account"
             data = {
                 "name": name,
                 "password": password,
@@ -51,13 +51,13 @@ class system(__admin.system):
             raise TypeError("The word robot cannot be used in the password because it is reserved")
     
     def get_user_accounts(self) -> str:
-        url = f"https://{self._host}:{self._port}/GetAccounts"
+        url = f"https://{self._host}:{self._port}/get-accounts"
         data = {"token": self._token}
         resp = requests.post(url, verify=True, json=data).json()
         return resp
     
     def change_password(self, name:str, password:str) -> dict:
-        url = f"https://{self._host}:{self._port}/ChangePass"
+        url = f"https://{self._host}:{self._port}/change-password"
         data = {
             "name": name,
             "password": password,
@@ -77,19 +77,19 @@ class system(__admin.system):
     #     return resp
     #     ↓↓↓↓↓↓
     
-    def get_account_token(self, name:str, password:str) -> dict:
-        url = f"https://{self._host}:{self._port}/GetToken"
+    def get_account_token(self, name:str, password:str) -> str:
+        url = f"https://{self._host}:{self._port}/get-token"
         data = {
             "name": name,
             "password": password,
             "token": self._token
         }
-        resp = requests.post(url, verify=True, json=data).json()
-        return resp
+        token = requests.post(url, verify=True, json=data).json()["data"]["token"]
+        return token
     
     def change_token(self, name:str, password:str) -> dict:
         if password != "robot":
-            url = f"https://{self._host}:{self._port}/ChangeToken"
+            url = f"https://{self._host}:{self._port}/change-token"
             data = {
                 "name": name,
                 "password": password,
@@ -101,7 +101,7 @@ class system(__admin.system):
             raise TypeError("The word robot cannot be used in the password because it is reserved")
     
     def export_cache(self) -> dict:
-        url = f"https://{self._host}:{self._port}/ExportCache"
+        url = f"https://{self._host}:{self._port}/export-cache"
         data = {
             "token": self._token
         }
@@ -109,7 +109,7 @@ class system(__admin.system):
         return resp
     
     def import_cache(self, robots:dict, tools:dict, frames:dict) -> dict:
-        url = f"https://{self._host}:{self._port}/ImportCache"
+        url = f"https://{self._host}:{self._port}/import-cache"
         data = {
             "token": self._token,
             "robots": str(robots),

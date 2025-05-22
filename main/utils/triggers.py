@@ -17,27 +17,26 @@ if TYPE_CHECKING:
     import __admin as admin
     import __user as user
 
-SYSTEM:Union["super_admin.system", "admin.system", "user.system"]
-
-def triggers_handle(robot_data:RobotData, triggers:dict, refresh_timer:float) -> None:
-    url_pos_id = f"https://{SYSTEM._host}:{str(SYSTEM._port)}/GetPositionID"
-    data_pos_id = {
-        "robot": robot_data.name,
-        "token": SYSTEM._token
-    }
-    t = currentThread()
-    while getattr(t, "running", True):
-        response = requests.post(url_pos_id, verify=True, json=data_pos_id).json()["data"]
-        for key, func in triggers.items():
-            if str(response) == key:
-                func()
-        time.sleep(refresh_timer)
+def triggers_handle(system:Union["super_admin.system", "admin.system", "user.system"],
+    robot_data:RobotData, triggers:dict, refresh_timer:float) -> None:
+        url_pos_id = f"https://{system._host}:{str(system._port)}/get-position-id"
+        data_pos_id = {
+            "robot": robot_data.name,
+            "token": system._token
+        }
+        t = currentThread()
+        while getattr(t, "running", True):
+            response = requests.post(url_pos_id, verify=True, json=data_pos_id).json()["data"]
+            for key, func in triggers.items():
+                if str(response) == key:
+                    func()
+            time.sleep(refresh_timer)
 
 class TriggerHandler:
+    system:Union["super_admin.system", "admin.system", "user.system"]
     
     def __init__(self, robot_data:RobotData, system: Union["super_admin.system", "admin.system", "user.system"], refresh_timer:float=1, **kwargs) -> None:
-        global SYSTEM
-        SYSTEM = system
+        self.system = system
         self.triggers = {}
         self.robot_data = robot_data
         for key, func in kwargs.items():
@@ -56,7 +55,7 @@ class TriggerHandler:
             
     def start_handling(self) -> None:
         if self.thread is None:
-            handler = Thread(target=triggers_handle, kwargs={"robot_data": self.robot_data, "triggers": self.triggers, "refresh_timer": self.refresh_timer})
+            handler = Thread(target=triggers_handle, kwargs={"system": self.system, "robot_data": self.robot_data, "triggers": self.triggers, "refresh_timer": self.refresh_timer})
             handler.start()
             self.thread = handler
     
