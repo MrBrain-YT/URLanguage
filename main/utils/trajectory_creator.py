@@ -407,7 +407,7 @@ class TrajectoryConstructor:
 
         return cartesian_points
     
-    def smooth_trajectory(self, robot_data: RobotData, full_trajectory_points: list[XYZPos], cartesian_points: list[XYZPos], updating_start_point: XYZPos, count_points: int) -> list[XYZPos]:
+    def smooth_trajectory(self, robot_data: RobotData, full_trajectory_points: list[XYZPos], cartesian_points: list[XYZPos], count_points: int) -> list[XYZPos]:
         for point in cartesian_points:
             if isinstance(point, XYZPos):
                 if isinstance(point.smooth_endPoint, XYZPos):
@@ -415,13 +415,13 @@ class TrajectoryConstructor:
                     start_smoothing_point = self.point_on_trajectory(point, full_trajectory_points[-1], point.smooth_distance)
                     end_smoothing_point = self.point_on_trajectory(point, point.smooth_endPoint, point.smooth_distance)
                     # Find middle spline point
-                    A = np.array(end_smoothing_point.export_to(list)[0:3])
-                    C = np.array(point.export_to(list)[0:3])
-                    B = np.array(start_smoothing_point.export_to(list)[0:3])
+                    A = np.array(end_smoothing_point.export_to(list)[:3])
+                    C = np.array(point.export_to(list)[:3])
+                    B = np.array(start_smoothing_point.export_to(list)[:3])
                     middle_spline_point = XYZPos.from_list(self.bisector_point(A, B, C, point.smooth_distance, 0.3).tolist())
                     middle_spline_point.a = point.a; middle_spline_point.b = point.b; middle_spline_point.c = point.c
                     # Create smoothed trajectory
-                    smoothed_arc_points = Spline(robot_data, system=self).add_point(start_smoothing_point, middle_spline_point, end_smoothing_point, end_smoothing_point)._create_catmull_rom_spline_points()
+                    smoothed_arc_points = Spline(robot_data, "", system=self).add_point(start_smoothing_point, middle_spline_point, end_smoothing_point)._create_scypy_spline_points()
                     line_1 = self.generate_line_points(full_trajectory_points[-1], start_smoothing_point, count_points)
                     line_2 = self.generate_line_points(smoothed_arc_points[-1], point.smooth_endPoint, count_points)
                     full_trajectory_points.extend(line_1)
@@ -455,9 +455,9 @@ class TrajectoryConstructor:
                         
                     # Find middle spline point
                     smoothed_angle_point = self.point_between(end_smoothing_point, point, 80)
-                    A = np.array(end_smoothing_point.export_to(list))
-                    C = np.array(smoothed_angle_point.export_to(list))
-                    B = np.array(start_smoothing_point.export_to(list))
+                    A = np.array(end_smoothing_point.export_to(list)[:3])
+                    C = np.array(smoothed_angle_point.export_to(list)[:3])
+                    B = np.array(start_smoothing_point.export_to(list)[:3])
                     middle_spline_point = XYZPos.from_list(self.bisector_point(A, B, C, point.smooth_endPoint[2].smooth_distance, 1).tolist())
                     
                     # Add LIN trajectory to full trajectory
@@ -475,7 +475,7 @@ class TrajectoryConstructor:
                         middle_spline_point.b = end_smoothing_point.b + (b_delta / 2); middle_spline_point.c = end_smoothing_point.c + (c_delta / 2)
                     pre_start_smoothing_point = self.point_between(middle_spline_point, start_smoothing_point, 90)
                     # Create smoothed trajectory
-                    smoothed_trajectory = Spline(robot_data, system=self).add_point(end_smoothing_point, middle_spline_point, \
+                    smoothed_trajectory = Spline(robot_data, "", system=self).add_point(end_smoothing_point, middle_spline_point, \
                         pre_start_smoothing_point, start_smoothing_point)._create_catmull_rom_spline_points()
                     # Add smoothed and CIRC trajectory to full trajectory
                     full_trajectory_points.extend(smoothed_trajectory)
@@ -512,9 +512,9 @@ class TrajectoryConstructor:
                     start_smoothing_point = self.point_on_trajectory(end_circ_point, point[2].smooth_endPoint, point[2].smooth_distance)
                     
                     # Find middle spline point
-                    A = np.array(coords[-1].export_to(list)[0:-1])
-                    C = np.array(smoothed_coords[-1].export_to(export_type=list)[0:-1])
-                    B = np.array(start_smoothing_point.export_to(list)[0:-1])
+                    A = np.array(coords[-1].export_to(list)[:3])
+                    C = np.array(smoothed_coords[-1].export_to(export_type=list)[:3])
+                    B = np.array(start_smoothing_point.export_to(list)[:3])
                     middle_spline_point = XYZPos.from_list(self.bisector_point(A, B, C, point[2].smooth_distance, 0.33).tolist())
                     
                     end_smoothing_point.a = last_circ_point.a; end_smoothing_point.b = last_circ_point.b; end_smoothing_point.c = last_circ_point.c
@@ -527,11 +527,12 @@ class TrajectoryConstructor:
                     middle_spline_point.a = end_smoothing_point.a + (a_delta / 2);\
                         middle_spline_point.b = end_smoothing_point.b + (b_delta / 2); middle_spline_point.c = end_smoothing_point.c + (c_delta / 2)
                     # TODO: repair Spline parameters
-                    smoothed_trajectory = Spline(robot_data, system=self).add_point(end_smoothing_point, middle_spline_point, start_smoothing_point, start_smoothing_point)._create_catmull_rom_spline_points()
+                    smoothed_trajectory = Spline(robot_data, "", system=self).add_point(end_smoothing_point, middle_spline_point, start_smoothing_point, start_smoothing_point)._create_catmull_rom_spline_points()
                     full_trajectory_points.extend([cord for cord in coords])
                     full_trajectory_points += smoothed_trajectory
-                    full_trajectory_points.extend(self.generate_line_points(smoothed_trajectory[-1], point[2].smooth_endPoint, count_points))
+                    
                     if point[2].smooth_endPoint.smooth_endPoint is None:
+                        full_trajectory_points.extend(self.generate_line_points(smoothed_trajectory[-1], point[2].smooth_endPoint, count_points))
                         full_trajectory_points.append(point[2].smooth_endPoint)
                 else:
                     # CIRC to CIRC
@@ -593,7 +594,7 @@ class TrajectoryConstructor:
                     full_trajectory_points.extend([cord for cord in circ_coords1])
                     # Create smoothed trajectory
                     end_smoothing_point.a = circ_coords1[-1].a; end_smoothing_point.b = circ_coords1[-1].b; end_smoothing_point.c = circ_coords1[-1].c
-                    smoothed_trajectory = Spline(robot_data, system=self).add_point(end_smoothing_point, end_circ_point, middle_spline_point, start_circ_point, start_smoothing_point)._create_catmull_rom_spline_points()
+                    smoothed_trajectory = Spline(robot_data, "", system=self).add_point(end_smoothing_point, end_circ_point, middle_spline_point, start_circ_point, start_smoothing_point)._create_catmull_rom_spline_points()
                     full_trajectory_points += smoothed_trajectory
                     circ_coords2.reverse()
                     full_trajectory_points.extend([cord for cord in circ_coords2])

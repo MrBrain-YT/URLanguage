@@ -12,6 +12,7 @@ import requests
 import __user as User
 import __admin as Admin
 import __super_admin as SuperAdmin
+from utils.config import Config
 
 class Auth():
     def __init__(self, ip:str, port:int, server_token:str, symulate:bool=False) -> None:
@@ -20,6 +21,7 @@ class Auth():
         self.port = port
         self.server_token = server_token
         self.symulate = symulate
+        self.config = Config()
 
     def __get_role(self, name, password):
         try:
@@ -32,7 +34,8 @@ class Auth():
                     "password": password, 
                     "server_token": self.server_token
                     }
-                response = requests.post(url, verify=True, json=data).json()
+                verify = self.config.verify
+                response = requests.post(url, verify=verify, json=data).json()
                 if response.get("status"):
                     return response.get("data").get("role"), response.get("data").get("token")
                 else:

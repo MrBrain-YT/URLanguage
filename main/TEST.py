@@ -3,14 +3,15 @@ from data_types import AnglePos, RobotData, XYZPos, Spline, StaticData
 from utils.vizualizer import Vizualization
 from utils.triggers import TriggerHandler
 from utils.calibrate import calibration_tool, calibration_base
-import __robot
+from utils.config import Config
 
-# __robot.TRAJECTORY_SEND_SWITCH = False
+Config().verify = False
+Config().trajectory_send = False
 
-# system = auth.Auth("ursystem.local", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a")\
-#     .super_admin("SuperAdmin", "12345").system("ursystem.local", 5000) #, symulate=True
+system = auth.Auth("ursystem.local", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a", symulate=True)\
+    .super_admin("SuperAdmin", "12345").system("ursystem.local", 5000) #
     
-# robot = RobotData("First", "654123")
+robot = RobotData("First", "654123")
 # robot2 = RobotData("NewRobot", "000000")
 
 """ New API test"""
@@ -28,12 +29,12 @@ import __robot
 # print(system.set_robot_base(robot, "test"))
 # print(system.delete_base("one"))
 " send auto calibrated data "
-positions_list = [
-    XYZPos().from_list([0.0, 0.0, 0.0]),
-    XYZPos().from_list([-10.0, 10.0, 0.0]),
-    XYZPos().from_list([-10.0, -10.0, 0.0])
-]
-base_data = calibration_base(positions_list)
+# positions_list = [
+#     XYZPos().from_list([0.0, 0.0, 0.0]),
+#     XYZPos().from_list([-10.0, 10.0, 0.0]),
+#     XYZPos().from_list([-10.0, -10.0, 0.0])
+# ]
+# base_data = calibration_base(positions_list)
 # print(system.set_base_data("test", base_data))
 # p_start = XYZPos().from_list([0, 0, 0, 0, 0, 0])
 # p1 = XYZPos().from_list([0, 100, 0, 90, 0, 0])
@@ -65,12 +66,12 @@ base_data = calibration_base(positions_list)
 # print(system.lin(robot, p1, StaticData.CoordinatesSystem.FLANGE, start=p_start))
 # print(system.lin(robot, p1, StaticData.CoordinatesSystem.TOOL, start=p_start).trjectory[-1])
 " Tools calibration test "
-p1 = XYZPos().from_list([0.0, 200.0, 200.0,   0.0,   0.0,   -90.0])
-p2 = XYZPos().from_list([10.0, 190.0, 200.0,  0.0,   90.0,   0.0])
-p3 = XYZPos().from_list([0.0, 180.0, 200.0,   0.0,  0.0,   90.0])
-p4 = XYZPos().from_list([-10.0, 190.0, 200.0,  0.0,   -90.0,  0.0])
-Vizualization([p1,p2,p3,p4]).show_plotly_trajectory_plot()
-print(calibration_tool([p1,p2,p3,p4]))
+# p1 = XYZPos().from_list([0.0, 200.0, 200.0,   0.0,   0.0,   -90.0])
+# p2 = XYZPos().from_list([10.0, 190.0, 200.0,  0.0,   90.0,   0.0])
+# p3 = XYZPos().from_list([0.0, 180.0, 200.0,   0.0,  0.0,   90.0])
+# p4 = XYZPos().from_list([-10.0, 190.0, 200.0,  0.0,   -90.0,  0.0])
+# Vizualization([p1,p2,p3,p4]).show_plotly_trajectory_plot()
+# print(calibration_tool([p1,p2,p3,p4]))
 
 # p1 = XYZPos().from_list([0.0, 200.0, 200.0,   0.0,   0.0,   0.0])
 # p2 = XYZPos().from_list([-10.0, 190.0, 200.0,  90.0,   0.0,   0.0])
@@ -121,7 +122,6 @@ print(calibration_tool([p1,p2,p3,p4]))
 # spl.add_point(p0, p1, p2, p3)
 # trajectory = spl.start_move().trjectory
 # Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
-# print(trajectory)
 " CIRC vizualization "
 ' CIRC to CIRC '
 # p1 = XYZPos().from_list([100, -100, 67.117])
@@ -136,13 +136,14 @@ print(calibration_tool([p1,p2,p3,p4]))
 # trajectory = system.circ(robot, [p1,p2,p3], 20, speed_multiplier=1, arc_angle=240).trjectory
 # Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
 ' CIRC to LIN '
+# coord_type = StaticData.CoordinatesSystem.WORLD
 # p1 = XYZPos().from_list([100, -100, 67.117])
 # p2 = XYZPos().from_list([200, 0, 67.117])
 # p3 = XYZPos().from_list([100, 100, 67.117])
 # p4 = XYZPos().from_list([200, 100, 0])
 # p3.smooth_endPoint = p4
 # p3.smooth_distance = 30
-# trajectory = system.circ(robot, [p1,p2,p3], 300, arc_angle=3600).trjectory
+# trajectory = system.circ(robot, [p1,p2,p3], coord_type, 150, arc_angle=3600).trjectory
 # Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
 ' LIN to LIN '
 # p_start = XYZPos().from_list([200, 200, 100])
@@ -152,9 +153,10 @@ print(calibration_tool([p1,p2,p3,p4]))
 # p4 = XYZPos().from_list([150, -100, 0])
 # p2.smooth_endPoint = p3
 # p2.smooth_distance = 50
-# trajectory = system.lin(robot, p1, 20, speed_multiplier=1, start=p_start).trjectory
-# trajectory2 = system.lin(robot, p2, 20, speed_multiplier=1, start=trajectory[-1]).trjectory
-# trajectory3 = system.lin(robot, p4, 20, speed_multiplier=1, start=trajectory2[-1]).trjectory
+# coord_type = StaticData.CoordinatesSystem.WORLD
+# trajectory = system.lin(robot, p1, coord_type, 20, speed_multiplier=1, start=p_start).trjectory
+# trajectory2 = system.lin(robot, p2, coord_type, 20, speed_multiplier=1, start=trajectory[-1]).trjectory
+# trajectory3 = system.lin(robot, p4, coord_type, 20, speed_multiplier=1, start=trajectory2[-1]).trjectory
 # trajectory_full = trajectory + trajectory2 + trajectory3
 # Vizualization(trajectory=trajectory_full).show_mathplotlib_trajectory_plot()
 ' LIN to CIRC using CIRC function '
@@ -169,7 +171,8 @@ print(calibration_tool([p1,p2,p3,p4]))
 # p3.smooth_distance = 30
 # p4.smooth_endPoint = [p5, p6, p7]
 # p4.smooth_distance = 30
-# trajectory = system.circ(robot, [p1, p2, p3], 50, speed_multiplier=1, arc_angle=240).trjectory
+# coord_type = StaticData.CoordinatesSystem.WORLD
+# trajectory = system.circ(robot, [p1, p2, p3], coord_type, 50, speed_multiplier=1, arc_angle=240).trjectory
 # Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
 ' LIN to CIRC using LIN function '
 # p1 = XYZPos().from_list([100, -100, 67.117])
@@ -188,13 +191,15 @@ print(calibration_tool([p1,p2,p3,p4]))
 # p7.circ_angle = 300
 # p4.smooth_endPoint = [p5, p6, p7]
 # p4.smooth_distance = 60
-# trajectory = system.lin(robot, p1, 20, speed_multiplier=1).trjectory
-# # trajectory2 = system.lin(robot, p3, 20, speed_multiplier=1).trjectory
+# coord_type = StaticData.CoordinatesSystem.WORLD
+# trajectory = system.lin(robot, p1, coord_type, 20, speed_multiplier=1).trjectory
+# # trajectory2 = system.lin(robot, p3, coord_type, 20, speed_multiplier=1).trjectory
 # Vizualization(trajectory=trajectory).show_plotly_trajectory_plot() # +trajectory2
 " show all trajectory"
 # Vizualization(trajectory=trajectory1+trajectory2).show_mathplotlib_trajectory_plot()
 
 """ ABC Visualize test """
+# coord_type = StaticData.CoordinatesSystem.WORLD
 # p_start = XYZPos().from_list([200, 200, 100, 90, 0, 0])
 # p1 = XYZPos().from_list([100, 100, 67.117, 90, 0, 90])
 # p2 = XYZPos().from_list([200, 0, 67.117, 90, 0, 0])
@@ -202,13 +207,12 @@ print(calibration_tool([p1,p2,p3,p4]))
 # p4 = XYZPos().from_list([150, -100, 0, 0, 0, 0])
 # p2.smooth_endPoint = p3
 # p2.smooth_distance = 50
-# trajectory = system.lin(robot, p1, 20, speed_multiplier=1, start=p_start).trjectory
-# trajectory2 = system.lin(robot, p2, 20, speed_multiplier=1, start=trajectory[-1]).trjectory
-# trajectory3 = system.lin(robot, p4, 20, speed_multiplier=1, start=trajectory2[-1]).trjectory
+# trajectory = system.lin(robot, p1, coord_type, 20, speed_multiplier=1, start=p_start).trjectory
+# trajectory2 = system.lin(robot, p2, coord_type, 20, speed_multiplier=1, start=trajectory[-1]).trjectory
+# trajectory3 = system.lin(robot, p4, coord_type, 20, speed_multiplier=1, start=trajectory2[-1]).trjectory
 # trajectory_full = trajectory + trajectory2 + trajectory3
-# Vizualization(trajectory=trajectory_full).show_plotly_trajectory_plot()
-# Vizualization(system.lin(robot, p2, num_points=25 ,start=XYZPos().from_list([100, 0, 67.117])).trjectory).show_mathplotlib_trajectory_plot()
-
+# # Vizualization(trajectory=trajectory_full).show_plotly_trajectory_plot()
+# Vizualization(system.lin(robot, p2, "", num_points=25 ,start=XYZPos().from_list([100, 0, 67.117])).trjectory).show_mathplotlib_trajectory_plot()
 
 """ PTP test """
 # system.ptp(robot, AnglePos().from_list([100,140,-40,10]))

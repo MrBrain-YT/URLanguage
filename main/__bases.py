@@ -1,6 +1,7 @@
 import requests
 
 from data_types import RobotData
+from utils.config import Config
 
 class Bases():
     # tool creation is located in the admin console
@@ -8,6 +9,7 @@ class Bases():
         self._host = host
         self._port = port
         self._token = token
+        self.config = Config()
         
     def get_base(self, base_name:str) -> dict:
         url = f"https://{self._host}:{self._port}/get-base"
@@ -15,7 +17,8 @@ class Bases():
             "id": base_name,
             "token": self._token
             }
-        return requests.post(url, verify=True, json=data).json()["data"]
+        verify = self.config.verify
+        return requests.post(url, verify=verify, json=data).json()["data"]
     
     def set_robot_base(self, robot_data:RobotData, tool_id:str) -> dict:
         url = f"https://{self._host}:{self._port}/set-robot-base"
@@ -25,4 +28,5 @@ class Bases():
             "id": tool_id,
             "token": self._token
             }
-        return requests.post(url, verify=True, json=data).json()
+        verify = self.config.verify
+        return requests.post(url, verify=verify, json=data).json()

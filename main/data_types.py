@@ -7,6 +7,8 @@ import requests
 from scipy.interpolate import CubicSpline
 import numpy as np
 
+from utils.config import Config
+
 if TYPE_CHECKING:
     import __super_admin as super_admin
     import __admin as admin
@@ -151,6 +153,7 @@ class Spline:
         self.lin_step_count = points_count
         self.speed_multiplier = speed_multiplier
         self.num_points = num_points
+        self.config = Config()
         
     def add_point(self, *point: XYZPos) -> "Spline":
         self.points.extend(point)
@@ -232,39 +235,43 @@ class Spline:
             
     def start_move(self) -> "ReturnData":
         full_trajectory_points = self._create_scypy_spline_points()
-        arc_points = self.system.xyz_to_angle(self.robot_data, full_trajectory_points, self.coordinate_system, is_multi_point=True)
-        # Set send parameter from xyz point to angle point
-        for index, point in enumerate(full_trajectory_points):
-                arc_points[index]["send"] = point.send
-                
-        new_speeds:list = []
-        for index, point in enumerate(arc_points):
-            old_point:AnglePos = None
-            if index == 0:
-                url = f"https://{self.system._host}:{str(self.system._port)}/GetCurentPosition"
-                data = {
-                    "robot": self.robot_data.name,
-                    "token": self.system._token
-                    }
-                current_angles = requests.post(url, verify=True, json=data).json()["data"]
-                
-                if isinstance(current_angles, list):
-                    old_point = AnglePos().from_dict(current_angles[-1])
+        if self.config.trajectory_send:
+            arc_points = self.system.xyz_to_angle(self.robot_data, full_trajectory_points, self.coordinate_system, is_multi_point=True)
+            # Set send parameter from xyz point to angle point
+            for index, point in enumerate(full_trajectory_points):
+                    arc_points[index]["send"] = point.send
+                    
+            new_speeds:list = []
+            for index, point in enumerate(arc_points):
+                old_point:AnglePos = None
+                if index == 0:
+                    url = f"https://{self.system._host}:{str(self.system._port)}/GetCurentPosition"
+                    data = {
+                        "robot": self.robot_data.name,
+                        "token": self.system._token
+                        }
+                    verify = self.config.verify
+                    current_angles = requests.post(url, verify=verify, json=data).json()["data"]
+                    
+                    if isinstance(current_angles, list):
+                        old_point = AnglePos().from_dict(current_angles[-1])
+                    else:
+                        old_point = AnglePos().from_dict(current_angles)
                 else:
-                    old_point = AnglePos().from_dict(current_angles)
-            else:
-                old_point = arc_points[index-1]
-            speed = self.system._speed_multiplier(self.system.calculate_speed(old_point, point, self.lin_step_count), self.speed_multiplier)
-            new_speeds.append(AnglePos(use_send=False).from_list(speed))
+                    old_point = arc_points[index-1]
+                speed = self.system._speed_multiplier(self.system.calculate_speed(old_point, point, self.lin_step_count), self.speed_multiplier)
+                new_speeds.append(AnglePos(use_send=False).from_list(speed))
+                
+            position_responce = self.system.set_robot_position(self.robot_data, arc_points, is_multi_point=True, last_point_position=self.points[-1])
+            speed_responce = self.system.set_robot_speed(self.robot_data, new_speeds, is_multi_point=True)
             
-        position_responce = self.system.set_robot_position(self.robot_data, arc_points, is_multi_point=True, last_point_position=self.points[-1])
-        speed_responce = self.system.set_robot_speed(self.robot_data, new_speeds, is_multi_point=True)
-        
-        response_data = {"Set position": position_responce[0],
-                         "Set speed": speed_responce[0]}
-        response_codes = {"Set position": position_responce[1],
-                         "Set speed": speed_responce[1]}
-        return ReturnData(responce=response_data, code=response_codes, trjectory=full_trajectory_points)
+            response_data = {"Set position": position_responce[0],
+                            "Set speed": speed_responce[0]}
+            response_codes = {"Set position": position_responce[1],
+                            "Set speed": speed_responce[1]}
+            return ReturnData(responce=response_data, code=response_codes, trjectory=full_trajectory_points)
+        else:
+            return ReturnData(responce=None, code=None, trjectory=full_trajectory_points)
 
 @dataclass
 class RobotData:

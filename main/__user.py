@@ -10,6 +10,7 @@ import __tools
 import __robot
 import __bases
 from data_types import RobotData
+from utils.config import Config
 
 external_token = ""
 class tokenizer():
@@ -29,6 +30,7 @@ class system(__robot.Robot, __tools.Tools, __bases.Bases):
         self._port = port
         self._host = host
         super().__init__(self._host, self._port, self._token)
+        self.config = Config()
         
     def set_emergency(self, robot_data:RobotData, state:bool) -> dict:
         url = f"https://{self._host}:{self._port}/set-emergency"
@@ -38,7 +40,8 @@ class system(__robot.Robot, __tools.Tools, __bases.Bases):
             "state": str(state),
             "code" : robot_data.code
             }
-        resp = requests.post(url, verify=True, json=data).json()
+        verify = self.config.verify
+        resp = requests.post(url, verify=verify, json=data).json()
         return resp
         
 
