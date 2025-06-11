@@ -291,8 +291,10 @@ class StaticData:
     
     class Roles:
         """  Roles for create new users """
+        ROBOT = "robot"
         USER = "user"
         ADMIN = "administrator"
+        SUPER_ADMIN = "SuperAdmin"
         
     class CoordinatesSystem:
         """  Coordinates system for send to moving commands """

@@ -109,18 +109,24 @@
         ```python
         import auth
         from utils.config import Config
+        from data_types import StaticData
 
-        Config().trajectory_send = False
-        Config().verify = False # Проверка сертификата SSL
+        cfg = Config()
+        cfg.verify = False
+        cfg.trajectory_send = False
+        cfg.login_simulation = True
+        cfg.simulation_role = StaticData.Roles.ADMIN
+        cfg.simulation_token = "h21ksau"
 
-        system = auth.Auth("ursystem.local", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a", symulate=True)\
-            .super_admin("SuperAdmin", "12345").system("ursystem.local", 5000)
+        system = auth.Auth("ursystem.local", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a")\
+            .admin("SuperAdmin", "12345").system("ursystem.local", 5000)
         ```
 
-        - `trajectory_send = False` - отключение отправки данных на сервер в модуле `__robot`
-        - `symulate=True` -  не обязательный параметр для получения роли и токена (когда значение `True`, возвращаеться роль `SuperAdmin`, а токен `123456789*qwerty`)
-
-        - Так-же можно использовать параметр `verify` чтобы включить или отключить проверку сертификата безопасности. Проверка происходит при отправке запроса на сервер, в данном примере он ничего не делает, так как запросы не отправляются.
+        - `cfg.verify` - позволяет включить или отключить проверку сертификата безопасности. Проверка происходит при отправке запроса на сервер, в данном примере он ничего не делает, так как запросы не отправляются.
+        - `cfg.trajectory_send = False` - отключение отправки данных на сервер в модуле `__robot`
+        - `cfg.login_simulation = True` - параметр для получения роли и токена (когда значение `True`, при авторизации вместо запроса на сервер вы сразу получаете роль и токен). 
+        - `cfg.simulation_role = StaticData.Roles.ADMIN` - позволяет настроить роль получаемую при симуляции авторизации, в примере мы устанавливаем `"administrator"`, по стандарту `SuperAdmin`
+        - `cfg.simulation_token = ""` -  позволяет настроить токен получаемый при симуляции авторизации, в примере мы устанавливаем `"h21ksau"`, по стандарту `""`
 
 - <h2 id='SecCerts'>Сертификаты безопасности</h2>
 

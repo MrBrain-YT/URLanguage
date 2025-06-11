@@ -12,7 +12,7 @@ class Bases():
         self.config = Config()
         
     def get_base(self, base_name:str) -> dict:
-        url = f"https://{self._host}:{self._port}/get-base"
+        url = f"https://{self._host}:{self._port}/api/get-base"
         data = {
             "id": base_name,
             "token": self._token
@@ -21,7 +21,7 @@ class Bases():
         return requests.post(url, verify=verify, json=data).json()["data"]
     
     def set_robot_base(self, robot_data:RobotData, tool_id:str) -> dict:
-        url = f"https://{self._host}:{self._port}/set-robot-base"
+        url = f"https://{self._host}:{self._port}/api/set-robot-base"
         data = {
             "robot": robot_data.name,
             "code": robot_data.code,
