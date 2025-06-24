@@ -159,32 +159,6 @@ class TrajectoryConstructor:
         
     def generate_arc_3d(self, start_point: XYZPos, middle_point: XYZPos, end_point: XYZPos, num_points: int = 25, distance: int = None, arc_angle: float = None):
         arc_angle_start = arc_angle
-        # Поиск дельты углов ABC
-        if arc_angle is None:
-            if num_points % 2 != 0:
-                num_points += 1
-            a_delta_1 = -(start_point.a - middle_point.a)
-            a_delta_2 = -(middle_point.a - end_point.a)
-            b_delta_1 = -(start_point.b - middle_point.b)
-            b_delta_2 = -(middle_point.b - end_point.b)
-            c_delta_1 = -(start_point.c - middle_point.c)
-            c_delta_2 = -(middle_point.c - end_point.c)
-            # Поиск угла на 1 шаг для первого отрезка
-            a_step_1 = a_delta_1 / (num_points / 2)
-            b_step_1 = b_delta_1 / (num_points / 2)
-            c_step_1 = c_delta_1 / (num_points / 2)
-            # Поиск угла на 1 шаг для второго отрезка
-            a_step_2 = a_delta_2 / (num_points / 2)
-            b_step_2 = b_delta_2 / (num_points / 2)
-            c_step_2 = c_delta_2 / (num_points / 2)
-        else:
-            a_delta = -(start_point.a - middle_point.a)
-            b_delta = -(middle_point.b - end_point.b)
-            c_delta = -(start_point.c - middle_point.c)
-            
-            a_step = a_delta / num_points
-            b_step = b_delta / num_points
-            c_step = c_delta / num_points
             
         # Конвертируем точки в список для удобства
         converted_start_point = start_point.export_to(export_type=list)[0:3]
@@ -217,23 +191,65 @@ class TrajectoryConstructor:
             arc_points = [XYZPos().from_list(coord) for coord in np.array([center + radius * (np.cos(t) * u + np.sin(t) * w) for t in theta]).tolist()]
             # Применяем шаги углов для каждой точки
             arc_points[0].a = start_point.a; arc_points[0].b = start_point.b; arc_points[0].c = start_point.c
-            if arc_angle_start is None:
-                # 1 отрезок
-                for i in range(1, int(num_points/2) + 1):
-                    arc_points[i].a = arc_points[i-1].a + a_step_1
-                    arc_points[i].b = arc_points[i-1].b + b_step_1
-                    arc_points[i].c = arc_points[i-1].c + c_step_1
-                # 2 отрезок
-                for i in range(int(num_points/2)+1, num_points):
-                    arc_points[i].a = arc_points[i-1].a + a_step_2
-                    arc_points[i].b = arc_points[i-1].b + b_step_2
-                    arc_points[i].c = arc_points[i-1].c + c_step_2
-            else:
-                for i in range(1, num_points):
-                    arc_points[i].a = arc_points[i-1].a + a_step
-                    arc_points[i].b = arc_points[i-1].b + b_step
-                    arc_points[i].c = arc_points[i-1].c + c_step
-                
+        else:
+            # Если distance == None, возвращаем все точки до угла (arc_angle_calc)
+            arc_points = [XYZPos().from_list(coord) for coord in np.array([center + radius * (np.cos(t) * u + np.sin(t) * w) for t in np.linspace(0, np.radians(arc_angle), num_points)])]
+
+        if arc_angle_start is None:
+            if num_points % 2 != 0:
+                num_points += 1
+            a_delta_1 = -(start_point.a - middle_point.a)
+            a_delta_2 = -(middle_point.a - end_point.a)
+            b_delta_1 = -(start_point.b - middle_point.b)
+            b_delta_2 = -(middle_point.b - end_point.b)
+            c_delta_1 = -(start_point.c - middle_point.c)
+            c_delta_2 = -(middle_point.c - end_point.c)
+            # Поиск процентного отношения 1 и 2 отрезка к их сумме
+            finding_result = {}
+            points_distance = 9999999
+            for index, point in enumerate(arc_points):
+                new_distance = self.distance_between_points(middle_point, point)
+                if  new_distance < points_distance:
+                    points_distance = new_distance
+                    finding_result = {'point': point, 'index': index}
+            percent = (100 / num_points) * finding_result['index'] + 1
+            proportion = 100 / percent
+            # Поиск угла на 1 шаг для первого отрезка
+            a_step_1 = a_delta_1 / (num_points / proportion)
+            b_step_1 = b_delta_1 / (num_points / proportion)
+            c_step_1 = c_delta_1 / (num_points / proportion)
+            # Поиск угла на 1 шаг для второго отрезка
+            a_step_2 = a_delta_2 / (num_points / proportion)
+            b_step_2 = b_delta_2 / (num_points / proportion)
+            c_step_2 = c_delta_2 / (num_points / proportion)
+        else:
+            a_delta = -(start_point.a - middle_point.a)
+            b_delta = -(middle_point.b - end_point.b)
+            c_delta = -(start_point.c - middle_point.c)
+            
+            a_step = a_delta / num_points
+            b_step = b_delta / num_points
+            c_step = c_delta / num_points
+              
+        # Поиск дельты углов ABC
+        if arc_angle_start is None:
+            # 1 отрезок
+            for i in range(1, int(num_points / proportion) + 1):
+                arc_points[i].a = arc_points[i-1].a + a_step_1
+                arc_points[i].b = arc_points[i-1].b + b_step_1
+                arc_points[i].c = arc_points[i-1].c + c_step_1
+            # 2 отрезок
+            for i in range(int(num_points / proportion) + 1, num_points):
+                arc_points[i].a = arc_points[i-1].a + a_step_2
+                arc_points[i].b = arc_points[i-1].b + b_step_2
+                arc_points[i].c = arc_points[i-1].c + c_step_2
+        else:
+            for i in range(1, num_points):
+                arc_points[i].a = arc_points[i-1].a + a_step
+                arc_points[i].b = arc_points[i-1].b + b_step
+                arc_points[i].c = arc_points[i-1].c + c_step
+        
+        if distance is not None:     
             # Длина дуги между двумя точками на окружности
             arc_length = radius * np.radians(arc_angle)
             
@@ -252,28 +268,8 @@ class TrajectoryConstructor:
             target_point_from_end = XYZPos().from_list(center + radius * (np.cos(theta_end) * u + np.sin(theta_end) * w))
             
             return arc_points, target_point_from_end, target_point_from_start
-        
         else:
-            # Если distance == None, возвращаем все точки до угла (arc_angle_calc)
-            arc_points = [XYZPos().from_list(coord) for coord in np.array([center + radius * (np.cos(t) * u + np.sin(t) * w) for t in np.linspace(0, np.radians(arc_angle), num_points)])]
-            if arc_angle_start is None:
-                # 1 отрезок
-                for i in range(1, int(num_points/2) + 1):
-                    arc_points[i].a = arc_points[i-1].a + a_step_1
-                    arc_points[i].b = arc_points[i-1].b + b_step_1
-                    arc_points[i].c = arc_points[i-1].c + c_step_1
-                # 2 отрезок
-                for i in range(int(num_points/2)+1, num_points):
-                    arc_points[i].a = arc_points[i-1].a + a_step_2
-                    arc_points[i].b = arc_points[i-1].b + b_step_2
-                    arc_points[i].c = arc_points[i-1].c + c_step_2
-            else:
-                for i in range(1, num_points):
-                    arc_points[i].a = arc_points[i-1].a + a_step
-                    arc_points[i].b = arc_points[i-1].b + b_step
-                    arc_points[i].c = arc_points[i-1].c + c_step
             return arc_points, end_point, start_point
-
     
     def point_on_trajectory(self, start_point: XYZPos, end_point: XYZPos, distance:float):
         """

@@ -6,11 +6,11 @@ from utils.calibrate import calibration_tool, calibration_base
 from utils.config import Config
 
 cfg = Config()
-cfg.verify = False
+# cfg.verify = False
 cfg.trajectory_send = False
-# cfg.login_simulation = True
-# cfg.simulation_role = StaticData.Roles.SUPER_ADMIN
-# cfg.simulation_token = ""
+cfg.login_simulation = True
+cfg.simulation_role = StaticData.Roles.SUPER_ADMIN
+cfg.simulation_token = ""
 
 system = auth.Auth("ursystem.local", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a")\
     .admin("SuperAdmin", "12345").system("ursystem.local", 5000)
@@ -118,14 +118,14 @@ robot = RobotData("First", "654123")
 # trajectory1= []+lin1.trjectory+lin4.trjectory
 # Vizualization(trajectory=trajectory1).show_mathplotlib_trajectory_plot()
 " Spline vizualization "
-spl = Spline(robot_data=robot, coordinate_system=StaticData.CoordinatesSystem.FLANGE, system=system, num_points=100)
-p0 = XYZPos().from_list([0,150,100, 90, 0, 0])
-p1 = XYZPos().from_list([200,-50,-100])
-p2 = XYZPos().from_list([-200,310,0, -90, 180, 0])
-p3 = XYZPos().from_list([400,50,50])
-spl.add_point(p0, p1, p2, p3)
-trajectory = spl.start_move().trjectory
-Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
+# spl = Spline(robot_data=robot, coordinate_system=StaticData.CoordinatesSystem.FLANGE, system=system, num_points=100)
+# p0 = XYZPos().from_list([0,150,100, 90, 0, 0])
+# p1 = XYZPos().from_list([200,-50,-100])
+# p2 = XYZPos().from_list([-200,310,0, -90, 180, 0])
+# p3 = XYZPos().from_list([400,50,50])
+# spl.add_point(p0, p1, p2, p3)
+# trajectory = spl.start_move().trjectory
+# Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
 " CIRC vizualization "
 ' CIRC to CIRC '
 # p1 = XYZPos().from_list([100, -100, 67.117])
@@ -140,15 +140,15 @@ Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
 # trajectory = system.circ(robot, [p1,p2,p3], 20, speed_multiplier=1, arc_angle=240).trjectory
 # Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
 ' CIRC to LIN '
-# coord_type = StaticData.CoordinatesSystem.WORLD
-# p1 = XYZPos().from_list([100, -100, 67.117])
-# p2 = XYZPos().from_list([200, 0, 67.117])
-# p3 = XYZPos().from_list([100, 100, 67.117])
-# p4 = XYZPos().from_list([200, 100, 0])
-# p3.smooth_endPoint = p4
-# p3.smooth_distance = 30
-# trajectory = system.circ(robot, [p1,p2,p3], coord_type, 150, arc_angle=3600).trjectory
-# Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
+coord_type = StaticData.CoordinatesSystem.WORLD
+p1 = XYZPos().from_list([100, -100, 67.117])
+p2 = XYZPos().from_list([180, 60, 67.117, 0, 90,0])
+p3 = XYZPos().from_list([100, 100, 67.117])
+p4 = XYZPos().from_list([200, 100, 0])
+p3.smooth_endPoint = p4
+p3.smooth_distance = 30
+trajectory = system.circ(robot, [p1,p2,p3], coord_type, 100, arc_angle=360).trjectory
+Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
 ' LIN to LIN '
 # p_start = XYZPos().from_list([200, 200, 100])
 # p1 = XYZPos().from_list([100, 100, 67.117])
