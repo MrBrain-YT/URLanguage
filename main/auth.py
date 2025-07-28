@@ -7,32 +7,37 @@ the received token is transferred to the tokenizer class and the system class is
 
 """
 
+import hashlib
+
 import requests
 
 import __user as User
 import __admin as Admin
 import __super_admin as SuperAdmin
+from utils.config import Config
 
 class Auth():
-    def __init__(self, ip:str, port:int, server_token:str, symulate:bool=False) -> None:
+    
+    def __init__(self, ip:str, port:int, server_token:str) -> None:
         ''' Symulate is parameter use symulating autentification '''
         self.ip = ip
         self.port = port
         self.server_token = server_token
-        self.symulate = symulate
+        self.config = Config()
 
-    def __get_role(self, name, password):
+    def __get_role(self, name:str, password:str):
         try:
-            if self.symulate:
-                return "SuperAdmin", "123456789*qwerty"
+            if self.config.login_simulation:
+                return self.config.simulation_role, self.config.simulation_token
             else:
-                url = f"https://{self.ip}:{self.port}/get-account-data"
+                url = f"https://{self.ip}:{self.port}/api/get-account-data"
                 data = {
                     "name": name,
-                    "password": password, 
+                    "password": hashlib.sha256(password.encode(encoding="utf-8")).hexdigest(), 
                     "server_token": self.server_token
                     }
-                response = requests.post(url, verify=True, json=data).json()
+                verify = self.config.verify
+                response = requests.post(url, verify=verify, json=data).json()
                 if response.get("status"):
                     return response.get("data").get("role"), response.get("data").get("token")
                 else:
@@ -54,7 +59,6 @@ class Auth():
                 return Admin
             else:
                 raise TypeError("You don't have enough rights")
-            
         
     def super_admin(self, name, password) -> SuperAdmin:
         if password != "robot":

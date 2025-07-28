@@ -159,32 +159,6 @@ class TrajectoryConstructor:
         
     def generate_arc_3d(self, start_point: XYZPos, middle_point: XYZPos, end_point: XYZPos, num_points: int = 25, distance: int = None, arc_angle: float = None):
         arc_angle_start = arc_angle
-        # Поиск дельты углов ABC
-        if arc_angle is None:
-            if num_points % 2 != 0:
-                num_points += 1
-            a_delta_1 = -(start_point.a - middle_point.a)
-            a_delta_2 = -(middle_point.a - end_point.a)
-            b_delta_1 = -(start_point.b - middle_point.b)
-            b_delta_2 = -(middle_point.b - end_point.b)
-            c_delta_1 = -(start_point.c - middle_point.c)
-            c_delta_2 = -(middle_point.c - end_point.c)
-            # Поиск угла на 1 шаг для первого отрезка
-            a_step_1 = a_delta_1 / (num_points / 2)
-            b_step_1 = b_delta_1 / (num_points / 2)
-            c_step_1 = c_delta_1 / (num_points / 2)
-            # Поиск угла на 1 шаг для второго отрезка
-            a_step_2 = a_delta_2 / (num_points / 2)
-            b_step_2 = b_delta_2 / (num_points / 2)
-            c_step_2 = c_delta_2 / (num_points / 2)
-        else:
-            a_delta = -(start_point.a - middle_point.a)
-            b_delta = -(middle_point.b - end_point.b)
-            c_delta = -(start_point.c - middle_point.c)
-            
-            a_step = a_delta / num_points
-            b_step = b_delta / num_points
-            c_step = c_delta / num_points
             
         # Конвертируем точки в список для удобства
         converted_start_point = start_point.export_to(export_type=list)[0:3]
@@ -217,23 +191,65 @@ class TrajectoryConstructor:
             arc_points = [XYZPos().from_list(coord) for coord in np.array([center + radius * (np.cos(t) * u + np.sin(t) * w) for t in theta]).tolist()]
             # Применяем шаги углов для каждой точки
             arc_points[0].a = start_point.a; arc_points[0].b = start_point.b; arc_points[0].c = start_point.c
-            if arc_angle_start is None:
-                # 1 отрезок
-                for i in range(1, int(num_points/2) + 1):
-                    arc_points[i].a = arc_points[i-1].a + a_step_1
-                    arc_points[i].b = arc_points[i-1].b + b_step_1
-                    arc_points[i].c = arc_points[i-1].c + c_step_1
-                # 2 отрезок
-                for i in range(int(num_points/2)+1, num_points):
-                    arc_points[i].a = arc_points[i-1].a + a_step_2
-                    arc_points[i].b = arc_points[i-1].b + b_step_2
-                    arc_points[i].c = arc_points[i-1].c + c_step_2
-            else:
-                for i in range(1, num_points):
-                    arc_points[i].a = arc_points[i-1].a + a_step
-                    arc_points[i].b = arc_points[i-1].b + b_step
-                    arc_points[i].c = arc_points[i-1].c + c_step
-                
+        else:
+            # Если distance == None, возвращаем все точки до угла (arc_angle_calc)
+            arc_points = [XYZPos().from_list(coord) for coord in np.array([center + radius * (np.cos(t) * u + np.sin(t) * w) for t in np.linspace(0, np.radians(arc_angle), num_points)])]
+
+        if arc_angle_start is None:
+            if num_points % 2 != 0:
+                num_points += 1
+            a_delta_1 = -(start_point.a - middle_point.a)
+            a_delta_2 = -(middle_point.a - end_point.a)
+            b_delta_1 = -(start_point.b - middle_point.b)
+            b_delta_2 = -(middle_point.b - end_point.b)
+            c_delta_1 = -(start_point.c - middle_point.c)
+            c_delta_2 = -(middle_point.c - end_point.c)
+            # Поиск процентного отношения 1 и 2 отрезка к их сумме
+            finding_result = {}
+            points_distance = 9999999
+            for index, point in enumerate(arc_points):
+                new_distance = self.distance_between_points(middle_point, point)
+                if  new_distance < points_distance:
+                    points_distance = new_distance
+                    finding_result = {'point': point, 'index': index}
+            percent = (100 / num_points) * finding_result['index'] + 1
+            proportion = 100 / percent
+            # Поиск угла на 1 шаг для первого отрезка
+            a_step_1 = a_delta_1 / (num_points / proportion)
+            b_step_1 = b_delta_1 / (num_points / proportion)
+            c_step_1 = c_delta_1 / (num_points / proportion)
+            # Поиск угла на 1 шаг для второго отрезка
+            a_step_2 = a_delta_2 / (num_points / proportion)
+            b_step_2 = b_delta_2 / (num_points / proportion)
+            c_step_2 = c_delta_2 / (num_points / proportion)
+        else:
+            a_delta = -(start_point.a - middle_point.a)
+            b_delta = -(middle_point.b - end_point.b)
+            c_delta = -(start_point.c - middle_point.c)
+            
+            a_step = a_delta / num_points
+            b_step = b_delta / num_points
+            c_step = c_delta / num_points
+              
+        # Поиск дельты углов ABC
+        if arc_angle_start is None:
+            # 1 отрезок
+            for i in range(1, int(num_points / proportion) + 1):
+                arc_points[i].a = arc_points[i-1].a + a_step_1
+                arc_points[i].b = arc_points[i-1].b + b_step_1
+                arc_points[i].c = arc_points[i-1].c + c_step_1
+            # 2 отрезок
+            for i in range(int(num_points / proportion) + 1, num_points):
+                arc_points[i].a = arc_points[i-1].a + a_step_2
+                arc_points[i].b = arc_points[i-1].b + b_step_2
+                arc_points[i].c = arc_points[i-1].c + c_step_2
+        else:
+            for i in range(1, num_points):
+                arc_points[i].a = arc_points[i-1].a + a_step
+                arc_points[i].b = arc_points[i-1].b + b_step
+                arc_points[i].c = arc_points[i-1].c + c_step
+        
+        if distance is not None:     
             # Длина дуги между двумя точками на окружности
             arc_length = radius * np.radians(arc_angle)
             
@@ -252,28 +268,8 @@ class TrajectoryConstructor:
             target_point_from_end = XYZPos().from_list(center + radius * (np.cos(theta_end) * u + np.sin(theta_end) * w))
             
             return arc_points, target_point_from_end, target_point_from_start
-        
         else:
-            # Если distance == None, возвращаем все точки до угла (arc_angle_calc)
-            arc_points = [XYZPos().from_list(coord) for coord in np.array([center + radius * (np.cos(t) * u + np.sin(t) * w) for t in np.linspace(0, np.radians(arc_angle), num_points)])]
-            if arc_angle_start is None:
-                # 1 отрезок
-                for i in range(1, int(num_points/2) + 1):
-                    arc_points[i].a = arc_points[i-1].a + a_step_1
-                    arc_points[i].b = arc_points[i-1].b + b_step_1
-                    arc_points[i].c = arc_points[i-1].c + c_step_1
-                # 2 отрезок
-                for i in range(int(num_points/2)+1, num_points):
-                    arc_points[i].a = arc_points[i-1].a + a_step_2
-                    arc_points[i].b = arc_points[i-1].b + b_step_2
-                    arc_points[i].c = arc_points[i-1].c + c_step_2
-            else:
-                for i in range(1, num_points):
-                    arc_points[i].a = arc_points[i-1].a + a_step
-                    arc_points[i].b = arc_points[i-1].b + b_step
-                    arc_points[i].c = arc_points[i-1].c + c_step
             return arc_points, end_point, start_point
-
     
     def point_on_trajectory(self, start_point: XYZPos, end_point: XYZPos, distance:float):
         """
@@ -407,7 +403,7 @@ class TrajectoryConstructor:
 
         return cartesian_points
     
-    def smooth_trajectory(self, robot_data: RobotData, full_trajectory_points: list[XYZPos], cartesian_points: list[XYZPos], updating_start_point: XYZPos, count_points: int) -> list[XYZPos]:
+    def smooth_trajectory(self, robot_data: RobotData, full_trajectory_points: list[XYZPos], cartesian_points: list[XYZPos], count_points: int) -> list[XYZPos]:
         for point in cartesian_points:
             if isinstance(point, XYZPos):
                 if isinstance(point.smooth_endPoint, XYZPos):
@@ -415,13 +411,13 @@ class TrajectoryConstructor:
                     start_smoothing_point = self.point_on_trajectory(point, full_trajectory_points[-1], point.smooth_distance)
                     end_smoothing_point = self.point_on_trajectory(point, point.smooth_endPoint, point.smooth_distance)
                     # Find middle spline point
-                    A = np.array(end_smoothing_point.export_to(list)[0:3])
-                    C = np.array(point.export_to(list)[0:3])
-                    B = np.array(start_smoothing_point.export_to(list)[0:3])
+                    A = np.array(end_smoothing_point.export_to(list)[:3])
+                    C = np.array(point.export_to(list)[:3])
+                    B = np.array(start_smoothing_point.export_to(list)[:3])
                     middle_spline_point = XYZPos.from_list(self.bisector_point(A, B, C, point.smooth_distance, 0.3).tolist())
                     middle_spline_point.a = point.a; middle_spline_point.b = point.b; middle_spline_point.c = point.c
                     # Create smoothed trajectory
-                    smoothed_arc_points = Spline(robot_data, system=self).add_point(start_smoothing_point, middle_spline_point, end_smoothing_point, end_smoothing_point)._create_catmull_rom_spline_points()
+                    smoothed_arc_points = Spline(robot_data, "", system=self).add_point(start_smoothing_point, middle_spline_point, end_smoothing_point)._create_scypy_spline_points()
                     line_1 = self.generate_line_points(full_trajectory_points[-1], start_smoothing_point, count_points)
                     line_2 = self.generate_line_points(smoothed_arc_points[-1], point.smooth_endPoint, count_points)
                     full_trajectory_points.extend(line_1)
@@ -455,9 +451,9 @@ class TrajectoryConstructor:
                         
                     # Find middle spline point
                     smoothed_angle_point = self.point_between(end_smoothing_point, point, 80)
-                    A = np.array(end_smoothing_point.export_to(list))
-                    C = np.array(smoothed_angle_point.export_to(list))
-                    B = np.array(start_smoothing_point.export_to(list))
+                    A = np.array(end_smoothing_point.export_to(list)[:3])
+                    C = np.array(smoothed_angle_point.export_to(list)[:3])
+                    B = np.array(start_smoothing_point.export_to(list)[:3])
                     middle_spline_point = XYZPos.from_list(self.bisector_point(A, B, C, point.smooth_endPoint[2].smooth_distance, 1).tolist())
                     
                     # Add LIN trajectory to full trajectory
@@ -475,7 +471,7 @@ class TrajectoryConstructor:
                         middle_spline_point.b = end_smoothing_point.b + (b_delta / 2); middle_spline_point.c = end_smoothing_point.c + (c_delta / 2)
                     pre_start_smoothing_point = self.point_between(middle_spline_point, start_smoothing_point, 90)
                     # Create smoothed trajectory
-                    smoothed_trajectory = Spline(robot_data, system=self).add_point(end_smoothing_point, middle_spline_point, \
+                    smoothed_trajectory = Spline(robot_data, "", system=self).add_point(end_smoothing_point, middle_spline_point, \
                         pre_start_smoothing_point, start_smoothing_point)._create_catmull_rom_spline_points()
                     # Add smoothed and CIRC trajectory to full trajectory
                     full_trajectory_points.extend(smoothed_trajectory)
@@ -512,9 +508,9 @@ class TrajectoryConstructor:
                     start_smoothing_point = self.point_on_trajectory(end_circ_point, point[2].smooth_endPoint, point[2].smooth_distance)
                     
                     # Find middle spline point
-                    A = np.array(coords[-1].export_to(list)[0:-1])
-                    C = np.array(smoothed_coords[-1].export_to(export_type=list)[0:-1])
-                    B = np.array(start_smoothing_point.export_to(list)[0:-1])
+                    A = np.array(coords[-1].export_to(list)[:3])
+                    C = np.array(smoothed_coords[-1].export_to(export_type=list)[:3])
+                    B = np.array(start_smoothing_point.export_to(list)[:3])
                     middle_spline_point = XYZPos.from_list(self.bisector_point(A, B, C, point[2].smooth_distance, 0.33).tolist())
                     
                     end_smoothing_point.a = last_circ_point.a; end_smoothing_point.b = last_circ_point.b; end_smoothing_point.c = last_circ_point.c
@@ -527,11 +523,12 @@ class TrajectoryConstructor:
                     middle_spline_point.a = end_smoothing_point.a + (a_delta / 2);\
                         middle_spline_point.b = end_smoothing_point.b + (b_delta / 2); middle_spline_point.c = end_smoothing_point.c + (c_delta / 2)
                     # TODO: repair Spline parameters
-                    smoothed_trajectory = Spline(robot_data, system=self).add_point(end_smoothing_point, middle_spline_point, start_smoothing_point, start_smoothing_point)._create_catmull_rom_spline_points()
+                    smoothed_trajectory = Spline(robot_data, "", system=self).add_point(end_smoothing_point, middle_spline_point, start_smoothing_point, start_smoothing_point)._create_catmull_rom_spline_points()
                     full_trajectory_points.extend([cord for cord in coords])
                     full_trajectory_points += smoothed_trajectory
-                    full_trajectory_points.extend(self.generate_line_points(smoothed_trajectory[-1], point[2].smooth_endPoint, count_points))
+                    
                     if point[2].smooth_endPoint.smooth_endPoint is None:
+                        full_trajectory_points.extend(self.generate_line_points(smoothed_trajectory[-1], point[2].smooth_endPoint, count_points))
                         full_trajectory_points.append(point[2].smooth_endPoint)
                 else:
                     # CIRC to CIRC
@@ -593,7 +590,7 @@ class TrajectoryConstructor:
                     full_trajectory_points.extend([cord for cord in circ_coords1])
                     # Create smoothed trajectory
                     end_smoothing_point.a = circ_coords1[-1].a; end_smoothing_point.b = circ_coords1[-1].b; end_smoothing_point.c = circ_coords1[-1].c
-                    smoothed_trajectory = Spline(robot_data, system=self).add_point(end_smoothing_point, end_circ_point, middle_spline_point, start_circ_point, start_smoothing_point)._create_catmull_rom_spline_points()
+                    smoothed_trajectory = Spline(robot_data, "", system=self).add_point(end_smoothing_point, end_circ_point, middle_spline_point, start_circ_point, start_smoothing_point)._create_catmull_rom_spline_points()
                     full_trajectory_points += smoothed_trajectory
                     circ_coords2.reverse()
                     full_trajectory_points.extend([cord for cord in circ_coords2])
