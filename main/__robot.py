@@ -21,7 +21,7 @@ class Robot():
         return speed_list
     
     def get_angles_count(self, robot_data:RobotData) -> int:
-        url = f"https://{self._host}:{str(self._port)}/get-angles-count"
+        url = f"https://{self._host}:{self._port}/api/get-angles-count"
         data = {
             "robot": robot_data.name,
             "token": self._token
@@ -32,7 +32,7 @@ class Robot():
         
     def check_emergency(self, robot_data:RobotData) -> bool:
         if self.config.trajectory_send:
-            url = f"https://{self._host}:{str(self._port)}/get-emergency"
+            url = f"https://{self._host}:{self._port}/api/get-emergency"
             data = {
                 "robot": robot_data.name,
                 "token": self._token,
@@ -45,7 +45,7 @@ class Robot():
 
     def set_robot_position(self, robot_data:RobotData, angles:Union[AnglePos, list[AnglePos]], is_multi_point:bool=False, last_point_position:Union[XYZPos, None]=None) -> dict:
         # Set position
-        url = f"https://{self._host}:{str(self._port)}/set-position"
+        url = f"https://{self._host}:{self._port}/api/set-position"
         data = {
             "robot": robot_data.name,
             "token": self._token,
@@ -66,7 +66,7 @@ class Robot():
     
     def set_robot_speed(self, robot_data:RobotData, angles_speed:Union[AnglePos, list[AnglePos]], is_multi_point:bool=False) -> dict:
         # Set motor speed
-        url = f"https://{self._host}:{str(self._port)}/set-speed"
+        url = f"https://{self._host}:{self._port}/api/set-speed"
         data = {
             "robot": robot_data.name,
             "token": self._token,
@@ -85,7 +85,7 @@ class Robot():
         return request_data.json(), request_data.status_code
         
     def move_xyz(self, robot_data:RobotData, position:XYZPos, coordinate_system:str) -> dict:
-        url = f"https://{self._host}:{str(self._port)}/set-cartesian-position"
+        url = f"https://{self._host}:{self._port}/api/set-cartesian-position"
         position = {
             "x": position.x,
             "y": position.y,
@@ -109,11 +109,11 @@ class Robot():
         new_positions = []
         if isinstance(positions, list):
             for pos in positions:
-                new_positions.append(pos.export_to(export_type=list))
+                new_positions.append(pos.export_to(export_type=dict))
         else:
-            new_positions.append(positions.export_to(export_type=list))
+            new_positions.append(positions.export_to(export_type=dict))
             
-        url = f"https://{self._host}:{str(self._port)}/cartesian-to-angles"
+        url = f"https://{self._host}:{self._port}/api/cartesian-to-angles"
         data = {
             "robot": robot_data.name,
             "code" : robot_data.code,
@@ -122,6 +122,7 @@ class Robot():
             "token": self._token
             }
         verify = self.config.verify
+        print(requests.post(url, verify=verify, json=data).text)
         result = requests.post(url, verify=verify, json=data).json()["data"]
         if not is_multi_point:
             return AnglePos().from_dict(result[0], rewrite=True)
@@ -136,7 +137,7 @@ class Robot():
         for angle_pos in angles:
             new_angles.append(angle_pos.export_to(export_type=list))
             
-        url = f"https://{self._host}:{str(self._port)}/angles-to-cartesian"
+        url = f"https://{self._host}:{self._port}/api/angles-to-cartesian"
         data = {
             "robot": robot_data.name,
             "token": self._token,
@@ -176,7 +177,7 @@ class Robot():
         return speeds
 
     def ptp(self, robot_data:RobotData, angles:AnglePos, step_count:int=100) -> ReturnData:
-        url = f"https://{self._host}:{str(self._port)}/get-position"
+        url = f"https://{self._host}:{self._port}/api/get-position"
         data = {
             "robot": robot_data.name,
             "token": self._token,
@@ -206,7 +207,7 @@ class Robot():
     def lin(self, robot_data:RobotData, end_point:XYZPos, coordinate_system:str, num_points:int=25, triggers:dict=None, speed_multiplier:int=1, start:XYZPos=None, lin_step_count:int=25) -> ReturnData:
         if start is None:
             if self.config.trajectory_send:
-                url = f"https://{self._host}:{str(self._port)}/get-cartesian-position"
+                url = f"https://{self._host}:{self._port}/api/get-cartesian-position"
                 data = {
                     "robot": robot_data.name,
                     "coordinate_system": coordinate_system,
@@ -252,7 +253,7 @@ class Robot():
             for index, point in enumerate(arc_points):
                 old_point:AnglePos = None
                 if index == 0:
-                    url = f"https://{self._host}:{str(self._port)}/get-position"
+                    url = f"https://{self._host}:{self._port}/api/get-position"
                     data = {
                         "robot": robot_data.name,
                         "token": self._token
@@ -323,7 +324,7 @@ class Robot():
                 for index, point in enumerate(arc_points):
                     old_point:list = []
                     if index == 0:
-                        url = f"https://{self._host}:{str(self._port)}/get-position"
+                        url = f"https://{self._host}:{self._port}/api/get-position"
                         data = {
                             "robot": robot_data.name,
                             "token": self._token
@@ -356,7 +357,7 @@ class Robot():
             
 
     def get_robot_log(self, robot_data:RobotData, timestamp:int=None) -> dict:
-        url = f"https://{self._host}:{str(self._port)}/get-robot-logs"
+        url = f"https://{self._host}:{self._port}/api/get-robot-logs"
         data = {
             "robot": robot_data.name,
             "token": self._token
@@ -368,7 +369,7 @@ class Robot():
 
     # cut out due to unnecessary reasons
     # def get_last_log(self, robot_data:RobotData) -> dict:
-    #     url = f"https://{self._host}:{str(self._port)}/GetRobotLogs"
+    #     url = f"https://{self._host}:{self._port}/api/GetRobotLogs"
     #     data = {
     #         "robot": robot_data.name,
     #         "token": self._token
@@ -376,7 +377,7 @@ class Robot():
     #     return requests.post(url, verify=verify, json=data).json()["data"][-1]
     
     def debug(self, robot_data:RobotData, text:str) -> dict:
-        url = f"https://{self._host}:{str(self._port)}/add-robot-log"
+        url = f"https://{self._host}:{self._port}/api/add-robot-log"
         data = {
             "robot": robot_data.name,
             "text": text
@@ -385,7 +386,7 @@ class Robot():
         return requests.post(url, verify=verify, json=data).json()
     
     def set_program(self, robot_data:RobotData, program:str) -> dict:
-        url = f"https://{self._host}:{str(self._port)}/set-program"
+        url = f"https://{self._host}:{self._port}/api/set-program"
         data = {
             "robot": robot_data.name,
             "program": program.encode().hex(),
@@ -396,17 +397,18 @@ class Robot():
         return requests.post(url, verify=verify, json=data).json()
     
     def delete_program(self, robot_data:RobotData) -> dict:
-        url = f"https://{self._host}:{str(self._port)}/delete-program"
+        url = f"https://{self._host}:{self._port}/api/delete-program"
         data = {
             "robot": robot_data.name,
             "token": self._token,
             "code" : robot_data.code
             }
         verify = self.config.verify
+        print(requests.post(url, verify=verify, json=data))
         return requests.post(url, verify=verify, json=data).json()
     
     def get_position_id(self, robot_data:RobotData) -> dict:
-        url = f"https://{self._host}:{str(self._port)}/get-position-id"
+        url = f"https://{self._host}:{self._port}/api/get-position-id"
         data = {
             "robot": robot_data.name,
             "token": self._token
@@ -415,7 +417,7 @@ class Robot():
         return requests.post(url, verify=verify, json=data).json()
     
     def set_position_id(self, robot_data:RobotData, position_id: int) -> dict:
-        url = f"https://{self._host}:{str(self._port)}/set-position-id"
+        url = f"https://{self._host}:{self._port}/api/set-position-id"
         data = {
             "robot": robot_data.name,
             "token": self._token,
