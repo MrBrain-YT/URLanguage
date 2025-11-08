@@ -7,15 +7,18 @@ from utils.config import Config
 
 cfg = Config()
 cfg.verify = False
-# cfg.trajectory_send = False
+cfg.trajectory_send = False
 # cfg.login_simulation = True
 # cfg.simulation_role = StaticData.Roles.SUPER_ADMIN
 # cfg.simulation_token = ""
+# cfg.get_robot_static_data_in_request = False
 
 system = auth.Auth("127.0.0.1", 5000, "15244dfbf0c9bd8378127e990c48e5a68b8c5a5786f34704bc528c9d91dbc84a")\
-    .super_admin("SuperAdmin", "12345").system("127.0.0.1", 5000)
+    .user("SuperAdmin", "12345").system("127.0.0.1", 5000)
     
 robot = RobotData("First", "654123")
+# robot.get_static_data(system)
+# print(system.get_angles_count(robot))
 # system.delete_program(robot)
 # robot2 = RobotData("NewRobot", "000000")
 
@@ -129,16 +132,16 @@ robot = RobotData("First", "654123")
 # Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
 " CIRC vizualization "
 ' CIRC to CIRC '
-p1 = XYZPos().from_list([100, -100, 67.117])
-p2 = XYZPos().from_list([200, 0, 67.117, 0, 0, 90])
-p3 = XYZPos().from_list([100, 100, 67.117])
-p6 = XYZPos().from_list([100, -100, 0, 180, 0, 0])
-p5 = XYZPos().from_list([200, 0, 0])
-p4 = XYZPos().from_list([100, 100, 0])
-p6.circ_angle = 90
-p3.smooth_endPoint = [p4, p5, p6]
-p3.smooth_distance = 20
-trajectory = system.circ(robot, [p1,p2,p3], "world", 20, speed_multiplier=1, arc_angle=240).trjectory
+# p1 = XYZPos().from_list([100, -100, 67.117])
+# p2 = XYZPos().from_list([200, 0, 67.117, 0, 0, 90])
+# p3 = XYZPos().from_list([100, 100, 67.117])
+# p6 = XYZPos().from_list([100, -100, 0, 180, 0, 0])
+# p5 = XYZPos().from_list([200, 0, 0])
+# p4 = XYZPos().from_list([100, 100, 0])
+# p6.circ_angle = 90
+# p3.smooth_endPoint = [p4, p5, p6]
+# p3.smooth_distance = 20
+# trajectory = system.circ(robot, [p1,p2,p3], "world", 20, speed_multiplier=1, arc_angle=240).trjectory
 # Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
 ' CIRC to LIN '
 # coord_type = StaticData.CoordinatesSystem.WORLD
@@ -151,19 +154,19 @@ trajectory = system.circ(robot, [p1,p2,p3], "world", 20, speed_multiplier=1, arc
 # trajectory = system.circ(robot, [p1,p2,p3], coord_type, 100, arc_angle=360).trjectory
 # Vizualization(trajectory=trajectory).show_mathplotlib_trajectory_plot()
 ' LIN to LIN '
-# p_start = XYZPos().from_list([200, 200, 100])
-# p1 = XYZPos().from_list([100, 100, 67.117])
-# p2 = XYZPos().from_list([200, 0, 67.117])
-# p3 = XYZPos().from_list([100, -100, 35])
-# p4 = XYZPos().from_list([150, -100, 0])
-# p2.smooth_endPoint = p3
-# p2.smooth_distance = 50
-# coord_type = StaticData.CoordinatesSystem.WORLD
-# trajectory = system.lin(robot, p1, coord_type, 20, speed_multiplier=1, start=p_start).trjectory
-# trajectory2 = system.lin(robot, p2, coord_type, 20, speed_multiplier=1, start=trajectory[-1]).trjectory
-# trajectory3 = system.lin(robot, p4, coord_type, 20, speed_multiplier=1, start=trajectory2[-1]).trjectory
-# trajectory_full = trajectory + trajectory2 + trajectory3
-# Vizualization(trajectory=trajectory_full).show_mathplotlib_trajectory_plot()
+p_start = XYZPos().from_list([200, 200, 100])
+p1 = XYZPos().from_list([100, 100, 67.117])
+p2 = XYZPos().from_list([200, 0, 67.117])
+p3 = XYZPos().from_list([100, -100, 35])
+p4 = XYZPos().from_list([150, -100, 0])
+p2.smooth_endPoint = p3
+p2.smooth_distance = 50
+coord_type = StaticData.CoordinatesSystem.WORLD
+trajectory = system.lin(robot, p1, coord_type, 20, speed_multiplier=1, start=p_start).trjectory
+trajectory2 = system.lin(robot, p2, coord_type, 20, speed_multiplier=1, start=trajectory[-1]).trjectory
+trajectory3 = system.lin(robot, p4, coord_type, 20, speed_multiplier=1, start=trajectory2[-1]).trjectory
+trajectory_full = trajectory + trajectory2 + trajectory3
+Vizualization(trajectory=trajectory_full).show_mathplotlib_trajectory_plot()
 ' LIN to CIRC using CIRC function '
 # p1 = XYZPos().from_list([100, -100, 67.117])
 # p2 = XYZPos().from_list([200, 0, 67.117, 180, 0, 0])

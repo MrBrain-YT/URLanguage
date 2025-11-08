@@ -2,7 +2,7 @@ from typing import Callable, TYPE_CHECKING, Union
 import os
 import sys
 import inspect
-from threading import Thread, currentThread
+from threading import Thread, current_thread
 import time
 
 import requests
@@ -24,7 +24,7 @@ def triggers_handle(system:Union["super_admin.system", "admin.system", "user.sys
             "robot": robot_data.name,
             "token": system._token
         }
-        t = currentThread()
+        t = current_thread()
         while getattr(t, "running", True):
             response = requests.post(url_pos_id, verify=True, json=data_pos_id).json()["data"]
             for key, func in triggers.items():

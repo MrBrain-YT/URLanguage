@@ -1,4 +1,10 @@
-config_data = {"trajectory_send": True, "verify": True, "login_simulation": False, "simulation_role": "SuperAdmin", "simulation_token": ""}
+config_data = {"trajectory_send": True,
+    "verify": True,
+    "login_simulation": False,
+    "simulation_role": "SuperAdmin",
+    "simulation_token": "",
+    "robot_static_data": True
+}
 
 class Config:
     _config_data = config_data
@@ -57,3 +63,14 @@ class Config:
             self._config_data["simulation_token"] = value
         else:
             raise TypeError("Invalid type for simulation_token. Expected string.")
+        
+    @property
+    def get_robot_static_data_in_request(self) -> bool:
+        return self._config_data["robot_static_data"]
+    
+    @get_robot_static_data_in_request.setter
+    def get_robot_static_data_in_request(self, value:bool) -> None:
+        if isinstance(value, bool):
+            self._config_data["robot_static_data"] = value
+        else:
+            raise TypeError("Invalid type for robot_static_data. Expected bool.")

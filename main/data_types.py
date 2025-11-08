@@ -1,7 +1,7 @@
 """ Classes for creating robots positions or robot data"""
 
 from typing import Union, TYPE_CHECKING, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import requests
 from scipy.interpolate import CubicSpline
@@ -259,7 +259,9 @@ class Spline:
                         old_point = AnglePos().from_dict(current_angles)
                 else:
                     old_point = arc_points[index-1]
-                speed = self.system._speed_multiplier(self.system.calculate_speed(old_point, point, self.lin_step_count), self.speed_multiplier)
+                
+                physical_speed = self.robot_data.static_data["PhysicalSpeed"]
+                speed = self.system._speed_multiplier(self.system.calculate_speed(old_point, point, self.lin_step_count, physical_speed), self.speed_multiplier)
                 new_speeds.append(AnglePos(use_send=False).from_list(speed))
                 
             position_responce = self.system.set_robot_position(self.robot_data, arc_points, is_multi_point=True, last_point_position=self.points[-1])
@@ -277,9 +279,24 @@ class Spline:
 class RobotData:
     name: str
     code: str
+    static_data: Union[dict, None] = field(init=False, default=None)
     
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Robot '{self.name}' | code '{self.code}'"
+    
+    def __repr__(self) -> str:
+        return f"RobotData(name={self.name}, code={self.code})"
+    
+    def get_static_data(self, system:Union["user.system", "admin.system", "super_admin.system"]) -> None:
+        robot_data = system.get_robot(self)["data"]
+        static_data = {}
+        static_data['AngleCount'] = robot_data['AngleCount']
+        static_data['HomePosition'] = robot_data['HomePosition']
+        static_data['MaxAngles'] = robot_data['MaxAngles']
+        static_data['MinAngles'] = robot_data['MinAngles']
+        static_data['PhysicalSpeed'] = robot_data['PhysicalSpeed']
+        static_data['StandardSpeed'] = robot_data['StandardSpeed']
+        self.static_data = static_data
         
 @dataclass   
 class ReturnData():

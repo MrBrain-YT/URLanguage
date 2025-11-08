@@ -15,20 +15,38 @@ class Robot():
         self.last_point_position = None
         self.config = Config()
         
-    def _speed_multiplier(self, speed_list:list, multiplier:float):
+    def update_static_robot_data(self, robot_data:RobotData) -> None:
+        if self.config.get_robot_static_data_in_request:
+            robot_data.get_static_data(self)
+
+    def _speed_multiplier(self, speed_list:list, multiplier:float) -> list:
         for index, value in enumerate(speed_list):
             speed_list[index] = value * multiplier
         return speed_list
     
-    def get_angles_count(self, robot_data:RobotData) -> int:
-        url = f"https://{self._host}:{self._port}/api/get-angles-count"
+    def get_robot(self, robot_data:RobotData) -> dict:
+        url = f"https://{self._host}:{self._port}/api/get-robot"
         data = {
             "robot": robot_data.name,
             "token": self._token
-        }
+            }
         verify = self.config.verify
-        response = requests.post(url, verify=verify, json=data).json()["data"]
-        return response
+        resp = requests.post(url, verify=verify, json=data).json()
+        return resp
+    
+    def get_angles_count(self, robot_data:RobotData) -> int:
+        self.update_static_robot_data(robot_data)
+        if robot_data.static_data is None:
+            url = f"https://{self._host}:{self._port}/api/get-angles-count"
+            data = {
+                "robot": robot_data.name,
+                "token": self._token
+            }
+            verify = self.config.verify
+            response = requests.post(url, verify=verify, json=data).json()["data"]
+            return response
+        else:
+            return robot_data.static_data["AngleCount"]
         
     def check_emergency(self, robot_data:RobotData) -> bool:
         if self.config.trajectory_send:
@@ -45,6 +63,7 @@ class Robot():
 
     def set_robot_position(self, robot_data:RobotData, angles:Union[AnglePos, list[AnglePos]], is_multi_point:bool=False, last_point_position:Union[XYZPos, None]=None) -> dict:
         # Set position
+        self.update_static_robot_data(robot_data)
         url = f"https://{self._host}:{self._port}/api/set-position"
         data = {
             "robot": robot_data.name,
@@ -66,6 +85,7 @@ class Robot():
     
     def set_robot_speed(self, robot_data:RobotData, angles_speed:Union[AnglePos, list[AnglePos]], is_multi_point:bool=False) -> dict:
         # Set motor speed
+        self.update_static_robot_data(robot_data)
         url = f"https://{self._host}:{self._port}/api/set-speed"
         data = {
             "robot": robot_data.name,
@@ -85,6 +105,7 @@ class Robot():
         return request_data.json(), request_data.status_code
         
     def move_xyz(self, robot_data:RobotData, position:XYZPos, coordinate_system:str) -> dict:
+        self.update_static_robot_data(robot_data)
         url = f"https://{self._host}:{self._port}/api/set-cartesian-position"
         position = {
             "x": position.x,
@@ -106,6 +127,7 @@ class Robot():
         return ReturnData(responce=response.text, code=response.status_code, trjectory=position)
 
     def xyz_to_angle(self, robot_data:RobotData, positions:Union[XYZPos, list[XYZPos]], coordinate_system:str, is_multi_point:bool=False) -> Union[AnglePos, list[AnglePos]]:
+        self.update_static_robot_data(robot_data)
         new_positions = []
         if isinstance(positions, list):
             for pos in positions:
@@ -122,7 +144,6 @@ class Robot():
             "token": self._token
             }
         verify = self.config.verify
-        print(requests.post(url, verify=verify, json=data).text)
         result = requests.post(url, verify=verify, json=data).json()["data"]
         if not is_multi_point:
             return AnglePos().from_dict(result[0], rewrite=True)
@@ -133,6 +154,7 @@ class Robot():
             return angles
 
     def angle_to_xyz(self, robot_data:RobotData, angles:list[AnglePos], is_multi_point:bool=False) -> dict:
+        self.update_static_robot_data(robot_data)
         new_angles = []
         for angle_pos in angles:
             new_angles.append(angle_pos.export_to(export_type=list))
@@ -155,28 +177,32 @@ class Robot():
             return positions
     
     @staticmethod
-    def calculate_speed(start_angles:AnglePos, end_angles:AnglePos, steps:int) -> list:
+    def late_speed(start_angles:AnglePos, end_angles:AnglePos, steps:int, robot_physical_speed:dict) -> list:
         start_angles = start_angles.export_to(list)
         end_angles = end_angles.export_to(list)
-        # pprint.pprint(start_angles)
-        # pprint.pprint(end_angles)
         # Проверка на совпадение размеров списков
         if len(start_angles) != len(end_angles):
             raise ValueError("Списки начальных и конечных углов должны иметь одинаковую длину")
+        # Множители для выравнивания скоростей моторов
+        max_motor_speed = max(robot_physical_speed.items())
+        speed_alignment_multipliers = [physical_speed / max_motor_speed for physical_speed in robot_physical_speed.items()]
+        print(speed_alignment_multipliers)
         # Инициализация списка скоростей
         speeds = []
         # Цикл по элементам списков углов
-        for i in range(len(start_angles)):
+        for motor_index in range(len(start_angles)):
             # Вычисление разницы между начальным и конечным углом для каждого сервомотора
-            if isinstance(end_angles[i], (float, int)):
-                angle_diff = end_angles[i] - start_angles[i]
+            if isinstance(end_angles[motor_index], (float, int)):
+                angle_diff = end_angles[motor_index] - start_angles[motor_index]
                 # Вычисление скорости вращения для каждого сервомотора
-                speed = angle_diff / steps  # steps - количество шагов
+                speed = abs(angle_diff / steps)
+                speed = speed * speed_alignment_multipliers[motor_index]
                 # Добавление скорости вращения в список
-                speeds.append(abs(speed))
+                speeds.append(speed)
         return speeds
 
     def ptp(self, robot_data:RobotData, angles:AnglePos, step_count:int=100) -> ReturnData:
+        self.update_static_robot_data(robot_data)
         url = f"https://{self._host}:{self._port}/api/get-position"
         data = {
             "robot": robot_data.name,
@@ -192,7 +218,8 @@ class Robot():
         else:
             start_angles = AnglePos().from_dict(current_angles)
         # Вычисление скоростей вращения для перемещения от начальной позиции к конечной
-        speeds = AnglePos().from_list(self.calculate_speed(start_angles, angles, step_count))
+        physical_speed = self.robot_data.static_data["PhysicalSpeed"]
+        speeds = AnglePos().from_list(self.late_speed(start_angles, angles, step_count, physical_speed))
 
         position_responce, pos_code = self.set_robot_position(robot_data, angles)
         speed_responce, speed_code = self.set_robot_speed(robot_data, speeds)
@@ -205,6 +232,7 @@ class Robot():
 
     
     def lin(self, robot_data:RobotData, end_point:XYZPos, coordinate_system:str, num_points:int=25, triggers:dict=None, speed_multiplier:int=1, start:XYZPos=None, lin_step_count:int=25) -> ReturnData:
+        self.update_static_robot_data(robot_data)
         if start is None:
             if self.config.trajectory_send:
                 url = f"https://{self._host}:{self._port}/api/get-cartesian-position"
@@ -267,7 +295,8 @@ class Robot():
                 else:
                     old_point = arc_points[index-1]
 
-                speed = self._speed_multiplier(self.calculate_speed(old_point, point, lin_step_count), speed_multiplier)
+                physical_speed = self.robot_data.static_data["PhysicalSpeed"]
+                speed = self._speed_multiplier(self.late_speed(old_point, point, lin_step_count, physical_speed), speed_multiplier)
                 new_speeds.append(AnglePos(use_send=False).from_list(speed))
             
             position_responce, pos_code = self.set_robot_position(robot_data, arc_points, is_multi_point=True)
@@ -282,6 +311,7 @@ class Robot():
             return ReturnData(responce=None, code=None, trjectory=full_trajectory_points)
 
     def circ(self, robot_data:RobotData, points_xyz:list[XYZPos], coordinate_system:str, count_points:int=50, triggers:dict=None, arc_angle:float=None, speed_multiplier:float=1, lin_step_count:int=10) -> ReturnData:
+        self.update_static_robot_data(robot_data)
         if not self.check_emergency(robot_data):
             if arc_angle is not None:
                 if arc_angle < 18:
@@ -339,7 +369,8 @@ class Robot():
                     else:
                         old_point = arc_points[index-1]
 
-                    speed = self._speed_multiplier(self.calculate_speed(old_point, point, lin_step_count), speed_multiplier)
+                    physical_speed = self.robot_data.static_data["PhysicalSpeed"]
+                    speed = self._speed_multiplier(self.late_speed(old_point, point, lin_step_count, physical_speed), speed_multiplier)
                     new_speeds.append(AnglePos(use_send=False).from_list(speed))
                     
                 position_responce, pos_code = self.set_robot_position(robot_data, arc_points, is_multi_point=True)
@@ -357,6 +388,7 @@ class Robot():
             
 
     def get_robot_log(self, robot_data:RobotData, timestamp:int=None) -> dict:
+        self.update_static_robot_data(robot_data)
         url = f"https://{self._host}:{self._port}/api/get-robot-logs"
         data = {
             "robot": robot_data.name,
@@ -377,6 +409,7 @@ class Robot():
     #     return requests.post(url, verify=verify, json=data).json()["data"][-1]
     
     def debug(self, robot_data:RobotData, text:str) -> dict:
+        self.update_static_robot_data(robot_data)
         url = f"https://{self._host}:{self._port}/api/add-robot-log"
         data = {
             "robot": robot_data.name,
@@ -386,6 +419,7 @@ class Robot():
         return requests.post(url, verify=verify, json=data).json()
     
     def set_program(self, robot_data:RobotData, program:str) -> dict:
+        self.update_static_robot_data(robot_data)
         url = f"https://{self._host}:{self._port}/api/set-program"
         data = {
             "robot": robot_data.name,
@@ -397,6 +431,7 @@ class Robot():
         return requests.post(url, verify=verify, json=data).json()
     
     def delete_program(self, robot_data:RobotData) -> dict:
+        self.update_static_robot_data(robot_data)
         url = f"https://{self._host}:{self._port}/api/delete-program"
         data = {
             "robot": robot_data.name,
@@ -408,6 +443,7 @@ class Robot():
         return requests.post(url, verify=verify, json=data).json()
     
     def get_position_id(self, robot_data:RobotData) -> dict:
+        self.update_static_robot_data(robot_data)
         url = f"https://{self._host}:{self._port}/api/get-position-id"
         data = {
             "robot": robot_data.name,
@@ -417,6 +453,7 @@ class Robot():
         return requests.post(url, verify=verify, json=data).json()
     
     def set_position_id(self, robot_data:RobotData, position_id: int) -> dict:
+        self.update_static_robot_data(robot_data)
         url = f"https://{self._host}:{self._port}/api/set-position-id"
         data = {
             "robot": robot_data.name,

@@ -138,16 +138,6 @@ class system(__user.system):
         verify = self.config.verify
         resp = requests.post(url, verify=verify, json=data).json()
         return resp
-
-    def get_robot(self, robot_data:RobotData) -> dict:
-        url = f"https://{self._host}:{self._port}/api/get-robot"
-        data = {
-            "robot": robot_data.name,
-            "token": self._token
-            }
-        verify = self.config.verify
-        resp = requests.post(url, verify=verify, json=data).json()
-        return resp
     
     def get_system_log(self, timestamp:int=None) -> dict:
         url = f"https://{self._host}:{self._port}/api/get-system-logs"
